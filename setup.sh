@@ -20,6 +20,7 @@ HOME_DIR=$HOME
 REPO_URL="https://github.com/lfpoulain/SimpleBooth"
 APP_DIR="$HOME_DIR/SimpleBooth"
 VENV_DIR="$APP_DIR/venv"
+CURRENT_DIR=$(pwd)
 
 # Fonction pour afficher le header
 show_header() {
@@ -109,6 +110,8 @@ install_dependencies() {
         "python3-venv"
         "build-essential"
         "libcap-dev"
+        "libjpeg-dev"
+        "zlib1g-dev"
         "chromium-browser"
         "xserver-xorg"
         "xinit"
@@ -235,6 +238,29 @@ clone_repository() {
     echo -e "${BLUE}📦 Étape 4/7: Clonage du repository SimpleBooth${NC}"
     echo ""
     
+    # Vérifier si on est déjà dans le dossier SimpleBooth
+    CURRENT_DIR=$(pwd)
+    if [[ "$CURRENT_DIR" == *"SimpleBooth"* ]]; then
+        echo -e "${GREEN}✓ Déjà dans le dossier SimpleBooth${NC}"
+        echo -e "${CYAN}Utilisation du dossier actuel: $CURRENT_DIR${NC}"
+        APP_DIR="$CURRENT_DIR"
+        VENV_DIR="$APP_DIR/venv"
+        
+        # Vérifier si c'est bien un repo git
+        if [ -d ".git" ]; then
+            echo -e "${CYAN}Voulez-vous mettre à jour le repository (git pull)? (o/N)${NC}"
+            read -r response
+            if [[ "$response" =~ ^[Oo]$ ]]; then
+                echo -e "${CYAN}→ Mise à jour du repository...${NC}"
+                git pull
+                echo -e "${GREEN}✓ Repository mis à jour${NC}"
+            fi
+        fi
+        sleep 2
+        return
+    fi
+    
+    # Si on n'est pas dans SimpleBooth, procéder normalement
     if [ -d "$APP_DIR" ]; then
         echo -e "${YELLOW}⚠ Le dossier $APP_DIR existe déjà.${NC}"
         echo -e "${YELLOW}Que voulez-vous faire?${NC}"
@@ -298,9 +324,9 @@ setup_python_env() {
         echo -e "${GREEN}✓ Dépendances Python installées${NC}"
     else
         echo -e "${YELLOW}⚠ Pas de fichier requirements.txt trouvé${NC}"
-        # Installation des dépendances communes pour une app Python
+    # Installation des dépendances communes pour une app Python
         echo -e "${CYAN}→ Installation des dépendances de base...${NC}"
-        pip install flask pillow numpy > /dev/null 2>&1 &
+        pip install flask pillow numpy opencv-python-headless > /dev/null 2>&1 &
         spinner $!
     fi
     
@@ -334,19 +360,58 @@ unclutter -idle 0.1 -root &
 # Démarrage de l'application SimpleBooth
 cd $APP_DIR
 source $VENV_DIR/bin/activate
-python app.py &
+
+# Rediriger les logs pour debug
+LOG_FILE="$HOME_DIR/simplebooth.log"
+echo "Démarrage SimpleBooth: \$(date)" > \$LOG_FILE
+
+# Démarrer Python et capturer les erreurs
+python app.py >> \$LOG_FILE 2>&1 &
 APP_PID=\$!
 
-# Attendre que l'application démarre (ajuster si nécessaire)
-sleep 5
+# Fonction pour vérifier si le serveur est prêt
+wait_for_server() {
+    echo "Attente du serveur..." >> \$LOG_FILE
+    local max_attempts=30
+    local attempt=0
+    
+    while [ \$attempt -lt \$max_attempts ]; do
+        if curl -s http://localhost:5000 > /dev/null 2>&1; then
+            echo "Serveur prêt!" >> \$LOG_FILE
+            return 0
+        fi
+        
+        # Vérifier si le processus Python est toujours en vie
+        if ! ps -p \$APP_PID > /dev/null; then
+            echo "ERREUR: Le processus Python s'est arrêté!" >> \$LOG_FILE
+            echo "Dernières lignes du log:" >> \$LOG_FILE
+            tail -20 \$LOG_FILE
+            exit 1
+        fi
+        
+        attempt=\$((attempt + 1))
+        echo "Tentative \$attempt/\$max_attempts..." >> \$LOG_FILE
+        sleep 2
+    done
+    
+    echo "ERREUR: Timeout - le serveur n'a pas démarré" >> \$LOG_FILE
+    return 1
+}
 
-# Lancer Chromium en mode kiosk
-chromium-browser --kiosk --no-sandbox --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state --disable-translate --disable-features=TranslateUI --disable-popup-blocking --disable-component-update --autoplay-policy=no-user-gesture-required --disable-features=PreloadMediaEngagementData,AutoplayIgnoreWebAudio,MediaEngagementBypassAutoplayPolicies http://localhost:5000 &
-CHROME_PID=\$!
+# Attendre que le serveur soit prêt
+if wait_for_server; then
+    echo "Lancement de Chromium..." >> \$LOG_FILE
+    # Lancer Chromium en mode kiosk
+    chromium-browser --kiosk --no-sandbox --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state --disable-translate --disable-features=TranslateUI --disable-popup-blocking --disable-component-update --autoplay-policy=no-user-gesture-required --disable-features=PreloadMediaEngagementData,AutoplayIgnoreWebAudio,MediaEngagementBypassAutoplayPolicies http://localhost:5000 &
+    CHROME_PID=\$!
+else
+    echo "Impossible de démarrer le serveur. Vérifiez les logs dans: \$LOG_FILE" >> \$LOG_FILE
+    exit 1
+fi
 
 # Fonction pour arrêter proprement
 cleanup() {
-    echo "Arrêt de SimpleBooth..."
+    echo "Arrêt de SimpleBooth..." >> \$LOG_FILE
     kill \$APP_PID 2>/dev/null
     kill \$CHROME_PID 2>/dev/null
     killall unclutter 2>/dev/null
@@ -451,16 +516,6 @@ EOF
     sudo systemctl enable simplebooth-kiosk.service
     echo -e "${GREEN}✓ Service systemd configuré et activé${NC}"
     
-    # Configuration de l'autologin
-    echo -e "${CYAN}→ Configuration de l'autologin...${NC}"
-    sudo mkdir -p /etc/systemd/system/getty@tty1.service.d/
-    sudo tee /etc/systemd/system/getty@tty1.service.d/autologin.conf > /dev/null << EOF
-[Service]
-ExecStart=
-ExecStart=-/sbin/agetty --autologin $CURRENT_USER --noclear %I \$TERM
-EOF
-    
-    echo -e "${GREEN}✓ Autologin configuré${NC}"
     sleep 2
 }
 
@@ -512,6 +567,10 @@ main() {
     echo -e "${CYAN}Pour arrêter SimpleBooth:${NC}"
     echo -e "  • Via SSH: ${WHITE}sudo systemctl stop simplebooth-kiosk${NC}"
     echo -e "  • Script d'arrêt: ${WHITE}$HOME_DIR/stop_simplebooth.sh${NC}"
+    echo ""
+    echo -e "${CYAN}Pour déboguer en cas de problème:${NC}"
+    echo -e "  • Logs de l'application: ${WHITE}cat $HOME_DIR/simplebooth.log${NC}"
+    echo -e "  • Logs du service: ${WHITE}sudo journalctl -u simplebooth-kiosk -f${NC}"
     echo ""
     echo -e "${CYAN}SimpleBooth démarrera automatiquement au prochain redémarrage.${NC}"
     echo ""
