@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+
+{% block title %}Photobooth{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-3" style="height: 100vh; overflow: hidden; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: #1a1a1a;">
+    <!-- Conteneur vidéo avec marges élégantes -->
+    <div class="video-container position-relative d-flex align-items-center justify-content-center" id="videoContainer" style="height: calc(100vh - 2rem); width: calc(100vw - 2rem);">
+        <img id="videoPreview" 
+             src="{{ url_for('video_stream') }}" 
+             style="max-width: calc(100vw - 2rem); max-height: calc(100vh - 2rem); width: auto; height: auto; object-fit: contain; background-color: #000; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);"
+             alt="Flux vidéo caméra">
+        
+        <!-- Countdown overlay -->
+        <div class="countdown d-none position-absolute top-50 start-50 translate-middle" id="countdown" 
+             style="font-size: 15rem; font-weight: bold; color: white; text-shadow: 3px 3px 6px rgba(0,0,0,0.8); z-index: 10;"></div>
+        
+        <!-- Flash blanc pour la prise de photo -->
+        <div class="flash-overlay d-none position-fixed top-0 start-0 w-100 h-100" id="flashOverlay" 
+             style="background-color: white; z-index: 15; display: flex; align-items: center; justify-content: center;">
+            <div style="font-size: 8rem; font-weight: bold; color: black; text-shadow: none;">CHEESE!</div>
+        </div>
+        
+        <!-- Bouton capture en overlay -->
+        <div class="position-absolute bottom-0 start-50 translate-middle-x mb-4" style="z-index: 5;">
+            <button id="captureBtn" class="btn btn-danger btn-lg px-5 py-3" onclick="capturePhoto()" 
+                    style="font-size: 1.5rem; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+                <i class="fas fa-camera fa-2x"></i>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Alerte manque de papier -->
+    <div class="position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index: 20; width: 90%; max-width: 500px;">
+        <div class="alert alert-warning d-none d-flex align-items-center" id="paper-alert" style="border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <div>
+                <strong>Attention !</strong><br>
+                <small>Vérifiez le papier de l'imprimante avant de prendre une photo</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Overlay diaporama -->
+<div id="slideshowOverlay" class="d-none" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #000; z-index: 9999; display: flex; align-items: center; justify-content: center;">
+    <div class="slideshow-container" style="width: 100%; height: 100%; position: relative;">
+        <img id="slideshowImage" 
+             style="width: 100%; height: 100%; object-fit: contain;" 
+             alt="Photo du diaporama">
+        
+        <!-- Indicateur de progression -->
+        <div class="slideshow-info position-absolute bottom-0 start-0 end-0 p-4 text-white" style="background: linear-gradient(transparent, rgba(0,0,0,0.7));">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-1" id="slideshowTitle">Diaporama</h5>
+                    <small id="slideshowCounter">Photo 1 sur 10</small>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted">Appuyez sur l'écran pour revenir</small>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let isCapturing = false;
+
+// Initialiser la caméra au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    initCamera();
+});
+
+function initCamera() {
+    try {
+        console.log('Initialisation du flux vidéo caméra...');
+        
+        const videoPreview = document.getElementById('videoPreview');
+        
+        // Gérer les erreurs de chargement du flux
+        videoPreview.onerror = function() {
+            console.error('Erreur de chargement du flux vidéo');
+            showCameraError();
+        };
+        
+        // Gérer le chargement réussi
+        videoPreview.onload = function() {
+            console.log('Flux vidéo caméra démarré avec succès');
+        };
+        
+        // Démarrer le flux via l'API
+        fetch('/start_camera')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Caméra initialisée:', data.status);
+            })
+            .catch(error => {
+                console.error('Erreur d\'initialisation caméra:', error);
+            });
+        
+    } catch (error) {
+        console.error('Erreur d\'accès à la caméra:', error);
+        showCameraError();
+    }
+}
+
+function showCameraError() {
+    document.getElementById('videoContainer').innerHTML = 
+        '<div class="alert alert-warning m-3">' +
+        '<i class="fas fa-exclamation-triangle me-2"></i>' +
+        'Impossible d\'accéder à la caméra. Vérifiez que libcamera est installé et que la caméra est connectée.' +
+        '</div>';
+}
+
+function capturePhoto() {
+    if (isCapturing) return;
+    
+    isCapturing = true;
+    const captureBtn = document.getElementById('captureBtn');
+    const countdown = document.getElementById('countdown');
+    
+    // Désactiver le bouton
+    captureBtn.disabled = true;
+    captureBtn.innerHTML = '<i class="fas fa-spinner fa-spin fa-2x"></i>';
+    
+    // Démarrer le compte à rebours
+    let timeLeft = parseInt('{{ timer }}');
+    countdown.classList.remove('d-none');
+    
+    const countdownInterval = setInterval(() => {
+        countdown.textContent = timeLeft;
+        timeLeft--;
+        
+        if (timeLeft < 0) {
+            clearInterval(countdownInterval);
+            countdown.textContent = 'CHEESE!';
+            
+            // Déclencher le flash blanc
+            setTimeout(() => {
+                countdown.classList.add('d-none');
+                const flashOverlay = document.getElementById('flashOverlay');
+                flashOverlay.classList.remove('d-none');
+                
+                // Masquer le flash après un court délai et prendre la photo
+                setTimeout(() => {
+                    flashOverlay.classList.add('d-none');
+                    takePicture();
+                }, 300);
+            }, 200);
+        }
+    }, 1000);
+}
+
+async function takePicture() {
+    try {
+        const response = await fetch('/capture', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Rediriger vers la page de révision
+            window.location.href = '/review';
+        } else {
+            throw new Error(result.error || 'Erreur de capture');
+        }
+        
+    } catch (error) {
+        console.error('Erreur lors de la capture:', error);
+        alert('Erreur lors de la prise de photo: ' + error.message);
+        
+        resetCaptureButton();
+    }
+}
+
+function resetCaptureButton() {
+    isCapturing = false;
+    const captureBtn = document.getElementById('captureBtn');
+    captureBtn.disabled = false;
+    captureBtn.innerHTML = '<i class="fas fa-camera fa-2x"></i>';
+}
+
+// Variables pour le diaporama
+let slideshowConfig = null;
+let slideshowPhotos = [];
+let slideshowActive = false;
+let slideshowIndex = 0;
+let slideshowInterval = null;
+
+let inactivityTimer = null;
+let lastActivity = Date.now();
+
+// Initialiser le diaporama au chargement
+document.addEventListener('DOMContentLoaded', function() {
+    loadSlideshowConfig();
+    setupActivityTracking();
+});
+
+async function loadSlideshowConfig() {
+    try {
+        const response = await fetch('/api/slideshow');
+        slideshowConfig = await response.json();
+        
+        if (slideshowConfig.enabled && slideshowConfig.photos.length > 0) {
+            slideshowPhotos = slideshowConfig.photos;
+            startInactivityTimer();
+        }
+    } catch (error) {
+        console.error('Erreur chargement config diaporama:', error);
+    }
+}
+
+function setupActivityTracking() {
+    // Détecter l'activité utilisateur
+    ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'].forEach(event => {
+        document.addEventListener(event, resetInactivityTimer, true);
+    });
+}
+
+function resetInactivityTimer() {
+    lastActivity = Date.now();
+    
+    if (slideshowActive) {
+        // Si le diaporama est actif, le fermer
+        stopSlideshow();
+        return;
+    }
+    
+    // Redémarrer le timer d'inactivité
+    if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+    }
+    
+    if (slideshowConfig && slideshowConfig.enabled && slideshowPhotos.length > 0) {
+        startInactivityTimer();
+    }
+}
+
+function startInactivityTimer() {
+    if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+    }
+    
+    inactivityTimer = setTimeout(() => {
+        if (!slideshowActive && slideshowPhotos.length > 0) {
+            startSlideshow();
+        }
+    }, slideshowConfig.delay * 1000);
+}
+
+function startSlideshow() {
+    if (slideshowPhotos.length === 0) return;
+    
+    slideshowActive = true;
+    slideshowIndex = 0;
+    
+    const overlay = document.getElementById('slideshowOverlay');
+    overlay.classList.remove('d-none');
+    overlay.style.display = 'flex';
+    
+    // Ajouter l'événement de clic pour fermer
+    overlay.addEventListener('click', stopSlideshow);
+    
+    showCurrentSlide();
+    
+    // Démarrer la rotation automatique (5 secondes par photo)
+    slideshowInterval = setInterval(() => {
+        nextSlide();
+    }, 5000);
+    
+
+}
+
+function stopSlideshow() {
+    slideshowActive = false;
+    
+    const overlay = document.getElementById('slideshowOverlay');
+    overlay.classList.add('d-none');
+    overlay.style.display = 'none';
+    
+    // Nettoyer les intervals
+    if (slideshowInterval) {
+        clearInterval(slideshowInterval);
+        slideshowInterval = null;
+    }
+    
+
+    
+    // Redémarrer le timer d'inactivité
+    startInactivityTimer();
+}
+
+function showCurrentSlide() {
+    if (slideshowPhotos.length === 0) return;
+    
+    const image = document.getElementById('slideshowImage');
+    const counter = document.getElementById('slideshowCounter');
+    
+    image.src = `/photos/${slideshowPhotos[slideshowIndex]}`;
+    counter.textContent = `Photo ${slideshowIndex + 1} sur ${slideshowPhotos.length}`;
+    
+
+}
+
+function nextSlide() {
+    slideshowIndex = (slideshowIndex + 1) % slideshowPhotos.length;
+    showCurrentSlide();
+
+}
+
+
+
+// Vérifier le statut de l'imprimante pour l'alerte papier
+function checkPrinterPaperStatus() {
+    fetch('/api/printer_status')
+        .then(response => response.json())
+        .then(data => {
+            const paperAlert = document.getElementById('paper-alert');
+            
+            // Afficher l'alerte seulement si l'imprimante est activée et qu'il y a un problème de papier
+            if (data.status === 'ok' && data.paper_status && data.paper_status !== 'ok' && data.paper_status !== 'unknown') {
+                paperAlert.classList.remove('d-none');
+            } else {
+                paperAlert.classList.add('d-none');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur vérification papier:', error);
+            // Masquer l'alerte en cas d'erreur
+            document.getElementById('paper-alert').classList.add('d-none');
+        });
+}
+
+// Vérifier le papier au chargement et périodiquement
+document.addEventListener('DOMContentLoaded', function() {
+    // Vérifier si on doit forcer l'affichage de l'alerte papier
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('show_paper_alert') === '1') {
+        // Forcer l'affichage de l'alerte
+        const paperAlert = document.getElementById('paper-alert');
+        paperAlert.classList.remove('d-none');
+        
+        // Nettoyer l'URL sans recharger la page
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+    }
+    
+    checkPrinterPaperStatus();
+    // Vérifier toutes les 30 secondes
+    setInterval(checkPrinterPaperStatus, 30000);
+});
+
+// Nettoyer les ressources lors de la fermeture
+window.addEventListener('beforeunload', function() {
+    fetch('/stop_camera').catch(error => {
+        console.log('Erreur arrêt caméra:', error);
+    });
+});
+</script>
+{% endblock %}

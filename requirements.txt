@@ -1,0 +1,30 @@
+# Requirements pour Raspberry Pi - Versions compatibles
+# Compatible avec NumPy 1.x et OpenCV
+
+# Version NumPy compatible
+numpy<2
+
+# OpenCV compatible avec NumPy 1.x
+opencv-python==4.8.1.78
+
+# Flask et dépendances web
+Flask==2.3.3
+Werkzeug==2.3.7
+
+# Traitement d'images
+Pillow==10.0.1
+
+# Télégram (optionnel)
+python-telegram-bot
+
+# Impression thermique (si utilisé)
+pillow
+pyserial
+python-escpos
+
+# Caméra Raspberry Pi (si utilisée)
+picamera2
+
+# Autres dépendances
+requests==2.31.0
+runware

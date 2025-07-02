@@ -1,0 +1,1113 @@
+{% extends "base.html" %}
+
+{% block title %}Photobooth - Administration{% endblock %}
+
+{% block content %}
+<!-- Toast de confirmation -->
+<div class="toast-container position-fixed top-0 end-0 p-3">
+    <div id="configSavedToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-show="{{ 'true' if show_toast else 'false' }}">
+        <div class="toast-header bg-success text-white">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong class="me-auto">Succès</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Fermer"></button>
+        </div>
+        <div class="toast-body">
+            Configuration sauvegardée avec succès !
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <!-- En-tête admin -->
+        <div class="admin-header text-center">
+            <h1><i class="fas fa-cog me-3"></i>Administration</h1>
+            <p class="mb-0">Configuration et gestion du photobooth</p>
+        </div>
+        
+        <!-- Navigation -->
+        <div class="mb-4">
+            <a href="{{ url_for('index') }}" class="btn btn-primary">
+                <i class="fas fa-arrow-left me-2"></i>
+                Retour au Photobooth
+            </a>
+        </div>
+        
+        <!-- Configuration Photobooth -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h3 class="mb-0"><i class="fas fa-camera me-2"></i>Configuration Photobooth</h3>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('save_admin_config') }}">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="footer_text" class="form-label fw-bold">
+                                    <i class="fas fa-font me-2 text-primary"></i>Texte en pied de photo
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="footer_text" 
+                                       name="footer_text" 
+                                       value="{{ config.footer_text }}"
+                                       placeholder="Ex: Mon Photobooth 2024">
+                                <div class="form-text">Ce texte apparaîtra sous chaque photo imprimée</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="timer_seconds" class="form-label fw-bold">
+                                    <i class="fas fa-clock me-2 text-primary"></i>Timer avant capture
+                                </label>
+                                <input type="number" 
+                                       class="form-control" 
+                                       id="timer_seconds" 
+                                       name="timer_seconds" 
+                                       value="{{ config.timer_seconds }}"
+                                       min="1" 
+                                       max="10">
+                                <div class="form-text">Délai avant la prise de photo (1-10 secondes)</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Configuration de la caméra -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h4 class="mb-4"><i class="fas fa-video me-2 text-primary"></i>Configuration de la caméra</h4>
+                            
+                            <!-- Sélection du type de caméra avec cartes visuelles -->
+                            <div class="row g-3 mb-4">
+                                <!-- Pi Camera Card -->
+                                <div class="col-md-6">
+                                    <div class="card camera-option h-100 {{ 'border-primary bg-light' if config.camera_type == 'picamera' else 'border-secondary' }}" data-camera-type="picamera">
+                                        <div class="card-body text-center p-4">
+                                            <div class="mb-3">
+                                                <i class="fas fa-microchip fa-3x text-danger"></i>
+                                            </div>
+                                            <h5 class="card-title mb-2">Pi Camera</h5>
+                                            <p class="card-text text-muted mb-3">
+                                                Caméra officielle Raspberry Pi<br>
+                                                <small>Haute qualité, optimisée pour le Pi</small>
+                                            </p>
+                                            <div class="form-check d-flex justify-content-center">
+                                                <input class="form-check-input me-2" type="radio" name="camera_type" id="camera_type_picamera" value="picamera" {{ 'checked' if config.camera_type == 'picamera' else '' }}>
+                                                <label class="form-check-label fw-bold" for="camera_type_picamera">
+                                                    Sélectionner
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- USB Camera Card -->
+                                <div class="col-md-6">
+                                    <div class="card camera-option h-100 {{ 'border-primary bg-light' if config.camera_type == 'usb' else 'border-secondary' }}" data-camera-type="usb">
+                                        <div class="card-body text-center p-4">
+                                            <div class="mb-3">
+                                                <i class="fas fa-plug fa-3x text-success"></i>
+                                            </div>
+                                            <h5 class="card-title mb-2">Caméra USB</h5>
+                                            <p class="card-text text-muted mb-3">
+                                                Caméra USB externe<br>
+                                                <small>Compatible avec la plupart des webcams</small>
+                                            </p>
+                                            <div class="form-check d-flex justify-content-center">
+                                                <input class="form-check-input me-2" type="radio" name="camera_type" id="camera_type_usb" value="usb" {{ 'checked' if config.camera_type == 'usb' else '' }}>
+                                                <label class="form-check-label fw-bold" for="camera_type_usb">
+                                                    Sélectionner
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Configuration spécifique USB -->
+                            <div id="usb_camera_settings" class="{{ 'd-none' if config.camera_type != 'usb' else '' }}">
+                                <div class="card border-success">
+                                    <div class="card-header bg-success text-white">
+                                        <h6 class="mb-0"><i class="fas fa-cog me-2"></i>Configuration caméra USB</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        {% if available_cameras %}
+                                            <div class="mb-3">
+                                                <label for="usb_camera_select" class="form-label fw-bold">
+                                                    <i class="fas fa-list me-2 text-success"></i>Caméra détectée
+                                                </label>
+                                                <select class="form-select form-select-lg" id="usb_camera_select" name="usb_camera_select">
+                                                    {% for camera_id, camera_name in available_cameras %}
+                                                        <option value="{{ camera_id }}" {{ 'selected' if config.usb_camera_id == camera_id else '' }}>
+                                                            <i class="fas fa-camera me-2"></i>{{ camera_name }}
+                                                        </option>
+                                                    {% endfor %}
+                                                </select>
+                                                <div class="form-text mt-2">
+                                                    <i class="fas fa-info-circle me-1"></i>
+                                                    {{ available_cameras|length }} caméra(s) USB détectée(s) et fonctionnelle(s)
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="alert alert-success d-flex align-items-center">
+                                                <i class="fas fa-check-circle me-2"></i>
+                                                <div>
+                                                    <strong>Caméras détectées avec succès !</strong><br>
+                                                    <small>Sélectionnez la caméra que vous souhaitez utiliser dans la liste ci-dessus.</small>
+                                                </div>
+                                            </div>
+                                        {% else %}
+                                            <div class="alert alert-warning d-flex align-items-center">
+                                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                                <div>
+                                                    <strong>Aucune caméra USB détectée</strong><br>
+                                                    <small>Vérifiez que votre caméra est bien connectée et redémarrez l'application.</small>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="text-center mt-3">
+                                                <button type="button" class="btn btn-outline-warning" onclick="window.location.reload()">
+                                                    <i class="fas fa-sync-alt me-2"></i>Actualiser la détection
+                                                </button>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+            </div>
+        </div>
+        
+
+        
+        <!-- Configuration Diaporama -->
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h3 class="mb-0"><i class="fas fa-play-circle me-2"></i>Configuration Diaporama</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-toggle-on me-2 text-info"></i>Activation
+                            </label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="slideshow_enabled" 
+                                       name="slideshow_enabled"
+                                       {{ 'checked' if config.slideshow_enabled else '' }}>
+                                <label class="form-check-label" for="slideshow_enabled">
+                                    Activer le diaporama automatique
+                                </label>
+                            </div>
+                            <div class="form-text">Le diaporama se lance automatiquement après inactivité</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="slideshow_delay" class="form-label fw-bold">
+                                <i class="fas fa-hourglass-half me-2 text-info"></i>Délai d'activation
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="slideshow_delay" 
+                                   name="slideshow_delay" 
+                                   value="{{ config.slideshow_delay }}"
+                                   min="10" 
+                                   max="300">
+                            <div class="form-text">Temps d'inactivité avant le diaporama (10-300 secondes)</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="slideshow_source" class="form-label fw-bold">
+                                <i class="fas fa-folder-open me-2 text-info"></i>Source des photos
+                            </label>
+                            <select class="form-select" id="slideshow_source" name="slideshow_source">
+                                <option value="photos" {{ 'selected' if config.slideshow_source == 'photos' else '' }}>Photos originales</option>
+                                <option value="effet" {{ 'selected' if config.slideshow_source == 'effet' else '' }}>Photos avec effet IA</option>
+                            </select>
+                            <div class="form-text">Choisir le dossier source pour le diaporama</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Configuration Effets IA -->
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h3 class="mb-0"><i class="fas fa-magic me-2"></i>Configuration Effets IA</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-toggle-on me-2 text-warning"></i>Activation des effets
+                            </label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="effect_enabled" 
+                                       name="effect_enabled"
+                                       {{ 'checked' if config.effect_enabled else '' }}>
+                                <label class="form-check-label" for="effect_enabled">
+                                    Activer le bouton d'effets IA sur les photos
+                                </label>
+                            </div>
+                            <div class="form-text">Permet d'appliquer des effets artistiques aux photos capturées</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="effect_prompt" class="form-label fw-bold">
+                                <i class="fas fa-wand-magic-sparkles me-2 text-warning"></i>Prompt d'effet
+                            </label>
+                            <textarea class="form-control" 
+                                      id="effect_prompt" 
+                                      name="effect_prompt" 
+                                      rows="3"
+                                      placeholder="Ex: Transform this photo into a beautiful artistic painting with vibrant colors">{{ config.effect_prompt }}</textarea>
+                            <div class="form-text">Description de l'effet à appliquer (en anglais)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="runware_api_key" class="form-label fw-bold">
+                                <i class="fas fa-key me-2 text-warning"></i>Clé API Runware
+                            </label>
+                            <input type="password" 
+                                   class="form-control" 
+                                   id="runware_api_key" 
+                                   name="runware_api_key" 
+                                   value="{{ config.runware_api_key }}"
+                                   placeholder="Votre clé API Runware">
+                            <div class="form-text">Clé d'accès à l'API Runware pour les effets IA</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="effect_steps" class="form-label fw-bold">
+                                <i class="fas fa-stairs me-2 text-warning"></i>Nombre d'étapes IA
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="effect_steps" 
+                                   name="effect_steps" 
+                                   value="{{ config.effect_steps }}"
+                                   min="1" 
+                                   max="50"
+                                   placeholder="5">
+                            <div class="form-text">Nombre d'étapes de génération (1-50, plus = meilleure qualité mais plus lent)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Configuration Telegram -->
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="fab fa-telegram-plane me-2"></i>Configuration Telegram
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="telegram_enabled" 
+                                       name="telegram_enabled"
+                                       {{ 'checked' if config.telegram_enabled else '' }}>
+                                <label class="form-check-label fw-bold" for="telegram_enabled">
+                                    <i class="fas fa-robot me-2 text-info"></i>Activer le bot Telegram
+                                </label>
+                            </div>
+                            <div class="form-text">Envoie automatiquement les photos sur Telegram</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="telegram_send_type" class="form-label fw-bold">
+                                <i class="fas fa-paper-plane me-2 text-info"></i>Type d'envoi
+                            </label>
+                            <select class="form-select" id="telegram_send_type" name="telegram_send_type">
+                                <option value="photos" {{ 'selected' if config.telegram_send_type == 'photos' else '' }}>Photos originales uniquement</option>
+                                <option value="effet" {{ 'selected' if config.telegram_send_type == 'effet' else '' }}>Photos avec effet uniquement</option>
+                                <option value="both" {{ 'selected' if config.telegram_send_type == 'both' else '' }}>Photos originales et effet</option>
+                            </select>
+                            <div class="form-text">Choisir quelles photos envoyer</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="telegram_bot_token" class="form-label fw-bold">
+                                <i class="fas fa-key me-2 text-info"></i>Token du bot
+                            </label>
+                            <input type="password" 
+                                   class="form-control" 
+                                   id="telegram_bot_token" 
+                                   name="telegram_bot_token" 
+                                   value="{{ config.telegram_bot_token }}"
+                                   placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
+                            <div class="form-text">Token obtenu via @BotFather sur Telegram</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="telegram_chat_id" class="form-label fw-bold">
+                                <i class="fas fa-comments me-2 text-info"></i>ID du chat/groupe
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="telegram_chat_id" 
+                                   name="telegram_chat_id" 
+                                   value="{{ config.telegram_chat_id }}"
+                                   placeholder="-1001234567890 ou @nom_du_canal">
+                            <div class="form-text">ID du chat, groupe ou canal de destination</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Comment configurer :</strong>
+                    <ol class="mb-0 mt-2">
+                        <li>Créer un bot via <strong>@BotFather</strong> sur Telegram</li>
+                        <li>Copier le <strong>token</strong> fourni</li>
+                        <li>Ajouter le bot à votre groupe/canal</li>
+                        <li>Utiliser <strong>@userinfobot</strong> pour obtenir l'ID du chat</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Configuration Imprimante -->
+        <div class="card mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-print me-2"></i>
+                    Configuration Imprimante
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="printer_enabled" 
+                                       name="printer_enabled" 
+                                       {% if config.printer_enabled %}checked{% endif %}>
+                                <label class="form-check-label fw-bold" for="printer_enabled">
+                                    <i class="fas fa-power-off me-2 text-success"></i>Activer l'imprimante
+                                </label>
+                            </div>
+                            <div class="form-text">Activer ou désactiver l'impression thermique</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="printer_port" class="form-label fw-bold">
+                                <i class="fas fa-plug me-2 text-info"></i>Port série
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="printer_port" 
+                                   name="printer_port" 
+                                   value="{{ config.printer_port }}"
+                                   placeholder="/dev/ttyUSB0">
+                            <div class="form-text">Port de connexion de l'imprimante (ex: /dev/ttyUSB0, COM3)</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="printer_baudrate" class="form-label fw-bold">
+                                <i class="fas fa-tachometer-alt me-2 text-warning"></i>Vitesse (Baudrate)
+                            </label>
+                            <select class="form-select" id="printer_baudrate" name="printer_baudrate">
+                                <option value="9600" {% if config.printer_baudrate == 9600 %}selected{% endif %}>9600</option>
+                                <option value="19200" {% if config.printer_baudrate == 19200 %}selected{% endif %}>19200</option>
+                                <option value="38400" {% if config.printer_baudrate == 38400 %}selected{% endif %}>38400</option>
+                                <option value="57600" {% if config.printer_baudrate == 57600 %}selected{% endif %}>57600</option>
+                                <option value="115200" {% if config.printer_baudrate == 115200 %}selected{% endif %}>115200</option>
+                            </select>
+                            <div class="form-text">Vitesse de communication avec l'imprimante</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="print_resolution" class="form-label fw-bold">
+                                <i class="fas fa-expand-arrows-alt me-2 text-primary"></i>Résolution
+                            </label>
+                            <select class="form-select" id="print_resolution" name="print_resolution">
+                                <option value="384" {% if config.print_resolution == 384 %}selected{% endif %}>384 pixels (Standard)</option>
+                                <option value="576" {% if config.print_resolution == 576 %}selected{% endif %}>576 pixels (Haute définition)</option>
+                            </select>
+                            <div class="form-text">Résolution d'impression des photos</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Statut de l'imprimante -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="alert alert-info d-flex align-items-center" id="printer-status">
+                            <div class="spinner-border spinner-border-sm me-2" role="status">
+                                <span class="visually-hidden">Chargement...</span>
+                            </div>
+                            <span>Vérification de l'état de l'imprimante...</span>
+                        </div>
+                        
+                        <button type="button" class="btn btn-outline-primary" onclick="checkPrinterStatus()">
+                            <i class="fas fa-sync-alt me-2"></i>
+                            Vérifier l'état
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Bouton de sauvegarde -->
+        <div class="text-center mb-4">
+            <button type="submit" class="btn btn-success btn-lg px-5">
+                <i class="fas fa-save me-2"></i>
+                Sauvegarder la Configuration
+            </button>
+        </div>
+        </form>
+        
+        <!-- Gestion des photos -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3><i class="fas fa-images me-2"></i>Gestion des Photos</h3>
+                <div>
+                    <span class="badge bg-primary me-2">
+                        <i class="fas fa-camera me-1"></i>
+                        {{ photos|selectattr('type', 'equalto', 'photo')|list|length }} originales
+                    </span>
+                    <span class="badge bg-warning text-dark">
+                        <i class="fas fa-magic me-1"></i>
+                        {{ photos|selectattr('type', 'equalto', 'effet')|list|length }} avec effet
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if photos %}
+                    <!-- Bouton de suppression globale -->
+                    <div class="mb-4 text-center">
+                        <button class="btn btn-danger" onclick="deleteAllPhotos()">
+                            <i class="fas fa-trash-alt me-2"></i>
+                            Supprimer Toutes les Photos
+                        </button>
+                    </div>
+                    
+                    <!-- Liste des photos -->
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Aperçu</th>
+                                    <th>Nom du fichier</th>
+                                    <th>Type</th>
+                                    <th>Date</th>
+                                    <th>Taille</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for photo in photos %}
+                                <tr>
+                                    <td>
+                                        <img src="{{ url_for('serve_photo', filename=photo.filename) }}" 
+                                             alt="Aperçu" 
+                                             style="width: 60px; height: 40px; object-fit: cover; border-radius: 5px; cursor: pointer;"
+                                             class="photo-thumbnail {% if photo.type == 'effet' %}border border-warning{% endif %}"
+                                             data-filename="{{ photo.filename }}"
+                                             data-type="{{ photo.type }}"
+                                             data-date="{{ photo.date }}"
+                                             data-size="{{ "%.1f"|format(photo.size / 1024) }}"
+                                             onclick="openPhotoModal(this)">
+                                    </td>
+                                    <td>
+                                        <a href="#" class="text-decoration-none photo-link" 
+                                           data-filename="{{ photo.filename }}"
+                                           data-type="{{ photo.type }}"
+                                           data-date="{{ photo.date }}"
+                                           data-size="{{ "%.1f"|format(photo.size / 1024) }}"
+                                           onclick="openPhotoModal(this)">
+                                            {{ photo.filename }}
+                                        </a>
+                                        {% if photo.type == 'effet' %}
+                                            <i class="fas fa-magic text-warning ms-1" title="Photo avec effet IA"></i>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if photo.type == 'effet' %}
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fas fa-magic me-1"></i>Effet IA
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-primary">
+                                                <i class="fas fa-camera me-1"></i>Original
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ photo.date }}</td>
+                                    <td>{{ "%.1f"|format(photo.size / 1024) }} KB</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted">
+                        <i class="fas fa-camera fa-3x mb-3"></i>
+                        <p>Aucune photo enregistrée pour le moment.</p>
+                        <p>Les photos prises apparaîtront ici.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modale de confirmation de suppression -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteConfirmModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Confirmation de suppression
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <i class="fas fa-trash-alt text-danger" style="font-size: 3rem;"></i>
+                </div>
+                <h6 class="text-center mb-3">Êtes-vous sûr de vouloir supprimer TOUTES les photos ?</h6>
+                <div class="alert alert-warning" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Attention :</strong> Cette action est irréversible ! Toutes les photos seront définitivement supprimées.
+                </div>
+                <p class="text-muted text-center mb-0">
+                    <small>{{ photos|length }} photo(s) seront supprimée(s)</small>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>
+                    Annuler
+                </button>
+                <button type="button" class="btn btn-danger" onclick="confirmDeleteAllPhotos()">
+                    <i class="fas fa-trash-alt me-2"></i>
+                    Supprimer toutes les photos
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modale de visualisation des photos -->
+<div class="modal fade" id="photoViewModal" tabindex="-1" aria-labelledby="photoViewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 500px;">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="photoViewModalLabel">
+                    <i class="fas fa-image me-2"></i>
+                    <span id="photoTitle">Visualisation Photo</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <!-- Image principale -->
+                <div class="mb-3">
+                    <img id="photoPreview" src="" alt="Aperçu photo" class="img-fluid" style="max-height: 250px; border-radius: 8px;">
+                </div>
+                
+                <!-- Informations de la photo -->
+                <div class="row text-start small">
+                    <div class="col-6">
+                        <p class="mb-1"><strong><i class="fas fa-file me-1"></i>Nom :</strong></p>
+                        <p class="text-muted mb-2" id="photoName" style="font-size: 0.85em;"></p>
+                        <p class="mb-1"><strong><i class="fas fa-calendar me-1"></i>Date :</strong></p>
+                        <p class="text-muted mb-2" id="photoDate" style="font-size: 0.85em;"></p>
+                    </div>
+                    <div class="col-6">
+                        <p class="mb-1"><strong><i class="fas fa-weight me-1"></i>Taille :</strong></p>
+                        <p class="text-muted mb-2" style="font-size: 0.85em;"><span id="photoSize"></span> KB</p>
+                        <p class="mb-1"><strong><i class="fas fa-tag me-1"></i>Type :</strong></p>
+                        <p class="text-muted mb-2" id="photoType" style="font-size: 0.85em;"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="row w-100 g-2">
+                    <div class="col-4">
+                        <button type="button" class="btn btn-danger w-100" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-2"></i>
+                            Fermer
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button type="button" class="btn btn-primary w-100" id="downloadBtn">
+                            <i class="fas fa-download me-2"></i>
+                            Télécharger
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button type="button" class="btn btn-success w-100" id="reprintBtn">
+                            <i class="fas fa-print me-2"></i>
+                            Réimprimer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+/* Styles personnalisés pour les cartes de caméra */
+.camera-option {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-width: 2px !important;
+}
+
+.camera-option:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.camera-option.selected {
+    border-color: #0d6efd !important;
+    background-color: #f8f9ff !important;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.camera-option .card-body {
+    position: relative;
+}
+
+.camera-option.selected::before {
+    content: '✓';
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: #0d6efd;
+    color: white;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.camera-option .form-check-input {
+    transform: scale(1.2);
+}
+
+.camera-option .fa-3x {
+    transition: color 0.3s ease;
+}
+
+.camera-option:hover .fa-microchip {
+    color: #dc3545 !important;
+}
+
+.camera-option:hover .fa-plug {
+    color: #198754 !important;
+}
+
+/* Animation pour l'affichage des paramètres USB */
+#usb_camera_settings {
+    transition: all 0.4s ease;
+}
+
+#usb_camera_settings.fade-in {
+    animation: fadeInUp 0.4s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Styles pour les photos cliquables */
+.photo-thumbnail:hover {
+    transform: scale(1.05);
+    transition: transform 0.2s ease;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.photo-link:hover {
+    color: #0d6efd !important;
+    text-decoration: underline !important;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Amélioration du select des caméras */
+.form-select-lg {
+    padding: 12px 16px;
+    font-size: 1.1rem;
+}
+
+.alert {
+    border-radius: 10px;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Fonctions de gestion des photos
+function openPhotoModal(element) {
+    const filename = element.dataset.filename;
+    const type = element.dataset.type;
+    const date = element.dataset.date;
+    const size = element.dataset.size;
+    
+    // Mettre à jour les informations de la modale
+    document.getElementById('photoTitle').textContent = filename;
+    document.getElementById('photoPreview').src = `{{ url_for('serve_photo', filename='') }}${filename}`;
+    document.getElementById('photoName').textContent = filename;
+    document.getElementById('photoDate').textContent = date;
+    document.getElementById('photoSize').textContent = size;
+    
+    // Mettre à jour le type avec badge
+    const photoTypeElement = document.getElementById('photoType');
+    if (type === 'effet') {
+        photoTypeElement.innerHTML = '<span class="badge bg-warning text-dark"><i class="fas fa-magic me-1"></i>Effet IA</span>';
+    } else {
+        photoTypeElement.innerHTML = '<span class="badge bg-primary"><i class="fas fa-camera me-1"></i>Original</span>';
+    }
+    
+    // Configurer les boutons d'action
+    document.getElementById('downloadBtn').onclick = function() {
+        window.location.href = `{{ url_for('download_photo', filename='') }}${filename}`;
+    };
+    
+    document.getElementById('reprintBtn').onclick = function() {
+        if (confirm('Voulez-vous vraiment réimprimer cette photo ?')) {
+            // Créer un formulaire pour la requête POST
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `{{ url_for('reprint_photo', filename='') }}${filename}`;
+            document.body.appendChild(form);
+            form.submit();
+        }
+    };
+    
+    // Ouvrir la modale
+    const modal = new bootstrap.Modal(document.getElementById('photoViewModal'));
+    modal.show();
+}
+
+function deleteAllPhotos() {
+    document.getElementById('deleteConfirmModal').classList.add('show');
+    document.getElementById('deleteConfirmModal').style.display = 'block';
+}
+
+function confirmDeleteAllPhotos() {
+    // Rediriger vers la route de suppression
+    window.location.href = "{{ url_for('delete_all_photos') }}";
+}
+
+function cancelDeleteAllPhotos() {
+    document.getElementById('deleteConfirmModal').classList.remove('show');
+    document.getElementById('deleteConfirmModal').style.display = 'none';
+}
+
+// Gestion améliorée de l'affichage des options de caméra USB
+function toggleUsbCameraSettings() {
+    var cameraType = document.querySelector('input[name="camera_type"]:checked').value;
+    var usbSettings = document.getElementById('usb_camera_settings');
+    
+    // Mettre à jour l'apparence des cartes
+    updateCameraCardSelection();
+    
+    if (cameraType === 'usb') {
+        usbSettings.classList.remove('d-none');
+        usbSettings.classList.add('fade-in');
+    } else {
+        usbSettings.classList.add('d-none');
+        usbSettings.classList.remove('fade-in');
+    }
+}
+
+// Mettre à jour l'apparence des cartes de sélection
+function updateCameraCardSelection() {
+    var selectedType = document.querySelector('input[name="camera_type"]:checked').value;
+    var cards = document.querySelectorAll('.camera-option');
+    
+    cards.forEach(function(card) {
+        var cardType = card.getAttribute('data-camera-type');
+        if (cardType === selectedType) {
+            card.classList.add('selected', 'border-primary', 'bg-light');
+            card.classList.remove('border-secondary');
+        } else {
+            card.classList.remove('selected', 'border-primary', 'bg-light');
+            card.classList.add('border-secondary');
+        }
+    });
+}
+
+// Gestion des clics sur les cartes
+function setupCameraCardClicks() {
+    var cards = document.querySelectorAll('.camera-option');
+    
+    cards.forEach(function(card) {
+        card.addEventListener('click', function() {
+            var cameraType = this.getAttribute('data-camera-type');
+            var radioButton = document.getElementById('camera_type_' + cameraType);
+            
+            if (radioButton) {
+                radioButton.checked = true;
+                toggleUsbCameraSettings();
+            }
+        });
+    });
+}
+
+// Initialisation au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    // Toast de confirmation
+    if (document.getElementById('configSavedToast')) {
+        const toastElement = document.getElementById('configSavedToast');
+        if (toastElement.dataset.show === 'true') {
+            const toast = new bootstrap.Toast(toastElement);
+            toast.show();
+        }
+    }
+    
+    // Initialiser les gestionnaires d'événements pour les cartes de caméra
+    setupCameraCardClicks();
+    
+    // Mettre à jour l'affichage initial des cartes
+    updateCameraCardSelection();
+    
+    // Afficher/masquer les paramètres USB selon la sélection initiale
+    const selectedCameraType = document.querySelector('input[name="camera_type"]:checked');
+    if (selectedCameraType) {
+        toggleUsbCameraSettings(selectedCameraType.value);
+    }
+    
+    // Événements pour les options de caméra
+    var cameraTypeRadios = document.querySelectorAll('input[name="camera_type"]');
+    cameraTypeRadios.forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            toggleUsbCameraSettings(this.value);
+        });
+    });
+    updateCameraCardSelection();
+    toggleUsbCameraSettings();
+    
+    // Vérifier l'état de l'imprimante au chargement
+    checkPrinterStatus();
+    
+    // Ajouter des événements pour les changements de configuration d'imprimante
+    setupPrinterConfigEvents();
+});
+
+// Fonction pour configurer les événements de configuration d'imprimante
+function setupPrinterConfigEvents() {
+    // Événement pour l'activation/désactivation de l'imprimante
+    const printerEnabledCheckbox = document.getElementById('printer_enabled');
+    if (printerEnabledCheckbox) {
+        printerEnabledCheckbox.addEventListener('change', function() {
+            savePrinterConfigAndRefresh();
+        });
+    }
+    
+    // Événement pour le changement de port
+    const printerPortInput = document.getElementById('printer_port');
+    if (printerPortInput) {
+        printerPortInput.addEventListener('blur', function() {
+            savePrinterConfigAndRefresh();
+        });
+    }
+    
+    // Événement pour le changement de baudrate
+    const printerBaudrateSelect = document.getElementById('printer_baudrate');
+    if (printerBaudrateSelect) {
+        printerBaudrateSelect.addEventListener('change', function() {
+            savePrinterConfigAndRefresh();
+        });
+    }
+    
+    // Événement pour le changement de résolution
+    const printResolutionSelect = document.getElementById('print_resolution');
+    if (printResolutionSelect) {
+        printResolutionSelect.addEventListener('change', function() {
+            savePrinterConfigAndRefresh();
+        });
+    }
+}
+
+// Fonction pour sauvegarder la configuration d'imprimante et rafraîchir le statut
+function savePrinterConfigAndRefresh() {
+    const formData = new FormData();
+    
+    // Récupérer les valeurs actuelles des champs d'imprimante
+    const printerEnabled = document.getElementById('printer_enabled');
+    const printerPort = document.getElementById('printer_port');
+    const printerBaudrate = document.getElementById('printer_baudrate');
+    const printResolution = document.getElementById('print_resolution');
+    
+    if (printerEnabled && printerEnabled.checked) {
+        formData.append('printer_enabled', 'on');
+    }
+    if (printerPort) {
+        formData.append('printer_port', printerPort.value);
+    }
+    if (printerBaudrate) {
+        formData.append('printer_baudrate', printerBaudrate.value);
+    }
+    if (printResolution) {
+        formData.append('print_resolution', printResolution.value);
+    }
+    
+    // Ajouter tous les autres champs du formulaire pour éviter de perdre la configuration
+    const form = document.querySelector('form');
+    const formElements = form.elements;
+    
+    for (let element of formElements) {
+        if (element.name && !element.name.startsWith('printer_') && element.name !== 'print_resolution') {
+            if (element.type === 'checkbox') {
+                if (element.checked) {
+                    formData.append(element.name, 'on');
+                }
+            } else if (element.type !== 'submit') {
+                formData.append(element.name, element.value);
+            }
+        }
+    }
+    
+    // Envoyer la requête de sauvegarde
+    fetch('/admin/save', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (response.ok) {
+            // Rafraîchir le statut de l'imprimante après sauvegarde
+            setTimeout(() => {
+                checkPrinterStatus();
+            }, 500);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur lors de la sauvegarde:', error);
+    });
+}
+
+// Fonction pour vérifier l'état de l'imprimante
+function checkPrinterStatus() {
+    const statusElement = document.getElementById('printer-status');
+    
+    // Afficher le spinner de chargement
+    statusElement.className = 'alert alert-info d-flex align-items-center';
+    statusElement.innerHTML = `
+        <div class="spinner-border spinner-border-sm me-2" role="status">
+            <span class="visually-hidden">Chargement...</span>
+        </div>
+        <span>Vérification de l'état de l'imprimante...</span>
+    `;
+    
+    // Appel API pour vérifier l'état
+    fetch('/api/printer_status')
+        .then(response => response.json())
+        .then(data => {
+            updatePrinterStatus(data);
+        })
+        .catch(error => {
+            console.error('Erreur lors de la vérification de l\'imprimante:', error);
+            statusElement.className = 'alert alert-danger d-flex align-items-center';
+            statusElement.innerHTML = `
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <span>Erreur lors de la vérification de l'imprimante</span>
+            `;
+        });
+}
+
+// Fonction pour mettre à jour l'affichage du statut de l'imprimante
+function updatePrinterStatus(data) {
+    const statusElement = document.getElementById('printer-status');
+    let alertClass, icon, message;
+    
+    switch(data.status) {
+        case 'ok':
+            alertClass = 'alert-success';
+            icon = 'fas fa-check-circle';
+            message = `Imprimante connectée sur ${data.port} (${data.baudrate} bps)`;
+            break;
+        case 'disabled':
+            alertClass = 'alert-warning';
+            icon = 'fas fa-power-off';
+            message = 'Imprimante désactivée dans la configuration';
+            break;
+        case 'error':
+        default:
+            alertClass = 'alert-danger';
+            icon = 'fas fa-exclamation-triangle';
+            message = data.message || 'Erreur inconnue';
+            break;
+    }
+    
+    statusElement.className = `alert ${alertClass} d-flex align-items-center`;
+    statusElement.innerHTML = `
+        <i class="${icon} me-2"></i>
+        <div>
+            <strong>Statut :</strong> ${message}
+            ${data.paper_status && data.paper_status !== 'unknown' ? 
+                `<br><small>Papier : ${data.paper_status === 'ok' ? '✓ Disponible' : '⚠ Problème'}</small>` : 
+                ''}
+        </div>
+    `;
+}
+</script>
+{% endblock %}
