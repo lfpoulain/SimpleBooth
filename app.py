@@ -14,6 +14,7 @@ import shutil
 import signal
 import atexit
 import base64
+import sys
 from datetime import datetime
 from werkzeug.utils import secure_filename
 from telegram import Bot
@@ -203,6 +204,46 @@ def send_to_telegram(photo_path, photo_type="photo"):
         print(f"[TELEGRAM] Erreur Telegram: {e}")
     except Exception as e:
         print(f"[TELEGRAM] Erreur lors de l'envoi: {e}")
+
+# Fonction pour détecter les ports série disponibles
+def detect_serial_ports():
+    """Détecte les ports série disponibles sur le système"""
+    available_ports = []
+    
+    # Détection selon le système d'exploitation
+    if sys.platform.startswith('win'):  # Windows
+        # Vérifier les ports COM1 à COM20
+        import serial.tools.list_ports
+        try:
+            ports = list(serial.tools.list_ports.comports())
+            for port in ports:
+                available_ports.append((port.device, f"{port.device} - {port.description}"))
+        except ImportError:
+            # Si pyserial n'est pas installé, on fait une détection basique
+            for i in range(1, 21):
+                port = f"COM{i}"
+                available_ports.append((port, port))
+    
+    elif sys.platform.startswith('linux'):  # Linux (Raspberry Pi)
+        # Vérifier les ports série courants sur Linux
+        common_ports = [
+            '/dev/ttyUSB0', '/dev/ttyUSB1', '/dev/ttyUSB2',
+            '/dev/ttyACM0', '/dev/ttyACM1', '/dev/ttyACM2',
+            '/dev/ttyS0', '/dev/ttyS1', '/dev/ttyAMA0'
+        ]
+        
+        for port in common_ports:
+            if os.path.exists(port):
+                available_ports.append((port, port))
+    
+    # Si aucun port n'est trouvé, ajouter des options par défaut
+    if not available_ports:
+        if sys.platform.startswith('win'):
+            available_ports = [('COM1', 'COM1'), ('COM3', 'COM3')]
+        else:
+            available_ports = [('/dev/ttyUSB0', '/dev/ttyUSB0'), ('/dev/ttyS0', '/dev/ttyS0')]
+    
+    return available_ports
 
 # Fonction pour détecter les caméras USB disponibles
 def detect_cameras():
@@ -728,43 +769,73 @@ async def apply_effect_async(photo_path):
 
 @app.route('/admin')
 def admin():
-    """Page d'administration"""
-    # Détecter les caméras USB disponibles
-    available_cameras = detect_cameras()
+    # Vérifier si le dossier photos existe
+    if not os.path.exists(PHOTOS_FOLDER):
+        os.makedirs(PHOTOS_FOLDER)
     
-    # Préparer la liste des photos (photos normales + photos avec effet)
+    # Vérifier si le dossier effet existe
+    if not os.path.exists(EFFECT_FOLDER):
+        os.makedirs(EFFECT_FOLDER)
+    
+    # Récupérer la liste des photos avec leurs métadonnées
     photos = []
     
-    # Ajouter les photos normales
+    # Récupérer les photos du dossier PHOTOS_FOLDER
     if os.path.exists(PHOTOS_FOLDER):
         for filename in os.listdir(PHOTOS_FOLDER):
             if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
-                filepath = os.path.join(PHOTOS_FOLDER, filename)
-                stat = os.stat(filepath)
+                file_path = os.path.join(PHOTOS_FOLDER, filename)
+                file_size = os.path.getsize(file_path) / 1024  # Taille en KB
+                file_date = datetime.fromtimestamp(os.path.getmtime(file_path))
+                
                 photos.append({
                     'filename': filename,
-                    'size': stat.st_size,
-                    'date': datetime.fromtimestamp(stat.st_mtime).strftime('%d/%m/%Y %H:%M'),
+                    'size': f"{file_size:.1f} KB",
+                    'date': file_date.strftime("%d/%m/%Y %H:%M"),
                     'type': 'photo',
                     'folder': PHOTOS_FOLDER
                 })
     
-    # Ajouter les photos avec effet
+    # Récupérer les photos du dossier EFFECT_FOLDER
     if os.path.exists(EFFECT_FOLDER):
         for filename in os.listdir(EFFECT_FOLDER):
             if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
-                filepath = os.path.join(EFFECT_FOLDER, filename)
-                stat = os.stat(filepath)
+                file_path = os.path.join(EFFECT_FOLDER, filename)
+                file_size = os.path.getsize(file_path) / 1024  # Taille en KB
+                file_date = datetime.fromtimestamp(os.path.getmtime(file_path))
+                
                 photos.append({
                     'filename': filename,
-                    'size': stat.st_size,
-                    'date': datetime.fromtimestamp(stat.st_mtime).strftime('%d/%m/%Y %H:%M'),
+                    'size': f"{file_size:.1f} KB",
+                    'date': file_date.strftime("%d/%m/%Y %H:%M"),
                     'type': 'effet',
                     'folder': EFFECT_FOLDER
                 })
     
-    photos.sort(key=lambda x: x['date'], reverse=True)
-    return render_template('admin.html', config=config, photos=photos, available_cameras=available_cameras)
+    # Trier les photos par date (plus récentes en premier)
+    photos.sort(key=lambda x: datetime.strptime(x['date'], "%d/%m/%Y %H:%M"), reverse=True)
+    
+    # Compter les photos de chaque type
+    photo_count = sum(1 for p in photos if p['type'] == 'photo')
+    effect_count = sum(1 for p in photos if p['type'] == 'effet')
+    
+    # Détecter les caméras USB disponibles
+    available_cameras = detect_cameras()
+    
+    # Détecter les ports série disponibles
+    available_serial_ports = detect_serial_ports()
+    
+    # Charger la configuration
+    config = load_config()
+    
+    return render_template('admin.html', 
+                           config=config, 
+                           photos=photos,
+                           photo_count=photo_count,
+                           effect_count=effect_count,
+                           available_cameras=available_cameras,
+                           available_serial_ports=available_serial_ports,
+                           show_toast=request.args.get('show_toast', False))
 
 @app.route('/admin/save', methods=['POST'])
 def save_admin_config():
@@ -831,6 +902,65 @@ def save_admin_config():
         flash(f'Erreur lors de la sauvegarde: {str(e)}', 'error')
     
     return redirect(url_for('admin'))
+
+@app.route('/api/printer_status')
+def check_printer_status():
+    """API pour vérifier l'état de l'imprimante"""
+    status = {
+        'connected': False,
+        'enabled': config.get('printer_enabled', False),
+        'port': config.get('printer_port', ''),
+        'baudrate': config.get('printer_baudrate', 9600),
+        'has_paper': False,
+        'message': ''
+    }
+    
+    # Si l'imprimante n'est pas activée, on retourne directement
+    if not status['enabled']:
+        status['message'] = 'Imprimante désactivée dans la configuration'
+        return jsonify(status)
+    
+    try:
+        # Vérifier si le module escpos est disponible
+        import escpos
+        from escpos.printer import Serial
+        
+        # Vérifier la connexion à l'imprimante
+        try:
+            # Créer une instance de l'imprimante avec les paramètres de configuration
+            printer = Serial(
+                devfile=status['port'],
+                baudrate=status['baudrate'],
+                timeout=1
+            )
+            
+            # Vérifier l'état du papier
+            printer.write(b'\x10\x04\x04')  # Commande ESC/POS pour vérifier l'état du papier
+            response = printer.read()
+            
+            # Analyser la réponse
+            if response:
+                status['connected'] = True
+                # Bit 2 à 1 indique un manque de papier (varie selon les imprimantes)
+                # Cette logique peut nécessiter des ajustements selon le modèle d'imprimante
+                if len(response) > 0 and (response[0] & 0x04) == 0:
+                    status['has_paper'] = True
+                    status['message'] = 'Imprimante connectée et prête'
+                else:
+                    status['message'] = 'Imprimante connectée mais manque de papier'
+            else:
+                status['message'] = 'Imprimante connectée mais pas de réponse'
+            
+            # Fermer la connexion
+            printer.close()
+            
+        except Exception as e:
+            status['message'] = f'Erreur de connexion: {str(e)}'
+            
+    except ImportError:
+        status['message'] = 'Module python-escpos non installé'
+    
+    return jsonify(status)
 
 @app.route('/admin/delete_photos', methods=['POST'])
 def delete_all_photos():

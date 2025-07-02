@@ -435,13 +435,24 @@
                             <label for="printer_port" class="form-label fw-bold">
                                 <i class="fas fa-plug me-2 text-info"></i>Port série
                             </label>
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="printer_port" 
-                                   name="printer_port" 
-                                   value="{{ config.printer_port }}"
-                                   placeholder="/dev/ttyUSB0">
-                            <div class="form-text">Port de connexion de l'imprimante (ex: /dev/ttyUSB0, COM3)</div>
+                            <select class="form-select" id="printer_port" name="printer_port">
+                                {% if available_serial_ports %}
+                                    {% for port_value, port_label in available_serial_ports %}
+                                        <option value="{{ port_value }}" {% if config.printer_port == port_value %}selected{% endif %}>{{ port_label }}</option>
+                                    {% endfor %}
+                                {% else %}
+                                    <option value="/dev/ttyUSB0" {% if config.printer_port == '/dev/ttyUSB0' %}selected{% endif %}>/dev/ttyUSB0</option>
+                                    <option value="/dev/ttyS0" {% if config.printer_port == '/dev/ttyS0' %}selected{% endif %}>/dev/ttyS0</option>
+                                    <option value="COM3" {% if config.printer_port == 'COM3' %}selected{% endif %}>COM3</option>
+                                {% endif %}
+                            </select>
+                            <div class="form-text d-flex align-items-center">
+                                <span>Ports série détectés automatiquement</span>
+                                <button type="button" class="btn btn-sm btn-outline-info ms-2" onclick="window.location.reload()">
+                                    <i class="fas fa-sync-alt"></i>
+                                    Actualiser
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -553,7 +564,7 @@
                                              data-filename="{{ photo.filename }}"
                                              data-type="{{ photo.type }}"
                                              data-date="{{ photo.date }}"
-                                             data-size="{{ "%.1f"|format(photo.size / 1024) }}"
+                                             data-size="{{ "%.1f"|format(photo.size|float / 1024) }}"
                                              onclick="openPhotoModal(this)">
                                     </td>
                                     <td>
@@ -561,7 +572,7 @@
                                            data-filename="{{ photo.filename }}"
                                            data-type="{{ photo.type }}"
                                            data-date="{{ photo.date }}"
-                                           data-size="{{ "%.1f"|format(photo.size / 1024) }}"
+                                           data-size="{{ "%.1f"|format(photo.size|float / 1024) }}"
                                            onclick="openPhotoModal(this)">
                                             {{ photo.filename }}
                                         </a>
@@ -581,7 +592,7 @@
                                         {% endif %}
                                     </td>
                                     <td>{{ photo.date }}</td>
-                                    <td>{{ "%.1f"|format(photo.size / 1024) }} KB</td>
+                                    <td>{{ "%.1f"|format(photo.size|float / 1024) }} KB</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -963,10 +974,10 @@ function setupPrinterConfigEvents() {
         });
     }
     
-    // Événement pour le changement de port
-    const printerPortInput = document.getElementById('printer_port');
-    if (printerPortInput) {
-        printerPortInput.addEventListener('blur', function() {
+    // Événement pour le changement de port (maintenant avec select)
+    const printerPortSelect = document.getElementById('printer_port');
+    if (printerPortSelect) {
+        printerPortSelect.addEventListener('change', function() {
             savePrinterConfigAndRefresh();
         });
     }
@@ -1035,9 +1046,10 @@ function savePrinterConfigAndRefresh() {
     .then(response => {
         if (response.ok) {
             // Rafraîchir le statut de l'imprimante après sauvegarde
+            // Délai augmenté pour s'assurer que la configuration est bien prise en compte
             setTimeout(() => {
                 checkPrinterStatus();
-            }, 500);
+            }, 1000);
         }
     })
     .catch(error => {
@@ -1079,23 +1091,28 @@ function updatePrinterStatus(data) {
     const statusElement = document.getElementById('printer-status');
     let alertClass, icon, message;
     
-    switch(data.status) {
-        case 'ok':
+    if (!data.enabled) {
+        // Imprimante désactivée
+        alertClass = 'alert-warning';
+        icon = 'fas fa-power-off';
+        message = 'Imprimante désactivée dans la configuration';
+    } else if (data.connected) {
+        if (data.has_paper) {
+            // Imprimante connectée et avec papier
             alertClass = 'alert-success';
             icon = 'fas fa-check-circle';
             message = `Imprimante connectée sur ${data.port} (${data.baudrate} bps)`;
-            break;
-        case 'disabled':
+        } else {
+            // Imprimante connectée mais sans papier
             alertClass = 'alert-warning';
-            icon = 'fas fa-power-off';
-            message = 'Imprimante désactivée dans la configuration';
-            break;
-        case 'error':
-        default:
-            alertClass = 'alert-danger';
-            icon = 'fas fa-exclamation-triangle';
-            message = data.message || 'Erreur inconnue';
-            break;
+            icon = 'fas fa-exclamation-circle';
+            message = 'Imprimante connectée mais manque de papier';
+        }
+    } else {
+        // Erreur de connexion
+        alertClass = 'alert-danger';
+        icon = 'fas fa-exclamation-triangle';
+        message = data.message || 'Erreur de connexion à l\'imprimante';
     }
     
     statusElement.className = `alert ${alertClass} d-flex align-items-center`;
@@ -1103,8 +1120,8 @@ function updatePrinterStatus(data) {
         <i class="${icon} me-2"></i>
         <div>
             <strong>Statut :</strong> ${message}
-            ${data.paper_status && data.paper_status !== 'unknown' ? 
-                `<br><small>Papier : ${data.paper_status === 'ok' ? '✓ Disponible' : '⚠ Problème'}</small>` : 
+            ${data.connected ? 
+                `<br><small>Papier : ${data.has_paper ? '✓ Disponible' : '⚠ Manquant'}</small>` : 
                 ''}
         </div>
     `;

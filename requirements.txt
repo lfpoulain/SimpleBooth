@@ -2,17 +2,17 @@
 # Compatible avec NumPy 1.x et OpenCV
 
 # Version NumPy compatible
-numpy<2
+numpy
 
 # OpenCV compatible avec NumPy 1.x
-opencv-python==4.8.1.78
+opencv-python
 
 # Flask et dépendances web
-Flask==2.3.3
-Werkzeug==2.3.7
+Flask
+Werkzeug
 
 # Traitement d'images
-Pillow==10.0.1
+Pillow
 
 # Télégram (optionnel)
 python-telegram-bot
@@ -26,5 +26,5 @@ python-escpos
 picamera2
 
 # Autres dépendances
-requests==2.31.0
+requests
 runware
