@@ -2,29 +2,34 @@
 # Compatible avec NumPy 1.x et OpenCV
 
 # Version NumPy compatible
-numpy
+numpy==1.24.3
 
 # OpenCV compatible avec NumPy 1.x
-opencv-python
+opencv-python==4.8.0.76
 
 # Flask et dépendances web
-Flask
-Werkzeug
+Flask==2.3.3
+Werkzeug==2.3.7
+Jinja2==3.1.2
+itsdangerous==2.1.2
+click==8.1.7
 
 # Traitement d'images
-Pillow
+Pillow==10.0.0
 
 # Télégram (optionnel)
-python-telegram-bot
+python-telegram-bot==13.15
 
-# Impression thermique (si utilisé)
-pillow
-pyserial
-python-escpos
+# Impression thermique
+pyserial==3.5
+python-escpos==3.0
 
-# Caméra Raspberry Pi (si utilisée)
-picamera2
+# Caméra Raspberry Pi
+picamera2==0.3.12
 
 # Autres dépendances
-requests
-runware
+requests==2.31.0
+
+# Dépendances pour l'interface
+flask-cors==4.0.0
+runware==0.4.15
