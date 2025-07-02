@@ -785,12 +785,12 @@ def admin():
         for filename in os.listdir(PHOTOS_FOLDER):
             if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
                 file_path = os.path.join(PHOTOS_FOLDER, filename)
-                file_size = os.path.getsize(file_path) / 1024  # Taille en KB
+                file_size_kb = os.path.getsize(file_path) / 1024  # Taille en KB
                 file_date = datetime.fromtimestamp(os.path.getmtime(file_path))
                 
                 photos.append({
                     'filename': filename,
-                    'size': f"{file_size:.1f} KB",
+                    'size_kb': file_size_kb,
                     'date': file_date.strftime("%d/%m/%Y %H:%M"),
                     'type': 'photo',
                     'folder': PHOTOS_FOLDER
@@ -801,12 +801,12 @@ def admin():
         for filename in os.listdir(EFFECT_FOLDER):
             if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
                 file_path = os.path.join(EFFECT_FOLDER, filename)
-                file_size = os.path.getsize(file_path) / 1024  # Taille en KB
+                file_size_kb = os.path.getsize(file_path) / 1024  # Taille en KB
                 file_date = datetime.fromtimestamp(os.path.getmtime(file_path))
                 
                 photos.append({
                     'filename': filename,
-                    'size': f"{file_size:.1f} KB",
+                    'size_kb': file_size_kb,
                     'date': file_date.strftime("%d/%m/%Y %H:%M"),
                     'type': 'effet',
                     'folder': EFFECT_FOLDER

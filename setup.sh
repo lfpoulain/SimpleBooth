@@ -25,6 +25,7 @@ warn()  { echo -e "${COLORS[Y]}⚠ $*${COLORS[N]}"; }
 error() { echo -e "${COLORS[R]}✖ $*${COLORS[N]}" >&2; exit 1; }
 
 # -------------------- Variables utilisateur --------------------
+# Installer dans le home de l'utilisateur sudo, pas root
 INSTALL_USER="${SUDO_USER:-${USER}}"
 HOME_DIR="$(eval echo ~${INSTALL_USER})"
 REPO_URL="https://github.com/lfpoulain/SimpleBooth"
@@ -33,8 +34,15 @@ VENV_DIR="$APP_DIR/venv"
 LOG_FILE="/tmp/simplebooth_install.log"
 WAVE_ENABLED=true
 
-# Chromium toujours utilisé
-CHROMIUM_PKG="chromium"
+# Détection du nom du paquet Chromium
+if apt-cache show chromium &>/dev/null; then
+  CHROMIUM_PKG="chromium"
+elif apt-cache show chromium-browser &>/dev/null; then
+  CHROMIUM_PKG="chromium-browser"
+else
+  warn "Paquet Chromium introuvable, installation ignorée"
+  CHROMIUM_PKG=""
+fi
 
 # -------------------- Trap erreurs --------------------
 trap 'error "Échec à la ligne $LINENO. Consultez $LOG_FILE"' ERR
@@ -53,27 +61,25 @@ confirm() {
 }
 
 # -------------------- Étapes --------------------
-update_system
-  install_dependencies
-  configure_serial() {
+update_system() {
+  log "Mise à jour du système..."
+  apt-get update -qq && apt-get upgrade -y -qq
+  ok "Système à jour"
+}
+
+install_dependencies() {
   local pkgs=(
     git python3 python3-pip python3-venv
     build-essential libcap2-bin xserver-xorg
     xinit x11-xserver-utils unclutter
-    raspi-config
-    $CHROMIUM_PKG
   )
-  log "Installation des dépendances : ${pkgs[*]}"
-  apt-get install -y -qq ${pkgs[*]}
-  ok "Dépendances installées"
-}
+  # Ajouter Chromium si détecté
+  if [[ -n "$CHROMIUM_PKG" ]]; then
+    pkgs+=("$CHROMIUM_PKG")
+  fi
 
-# Activation du serial hardware (UART) via raspi-config
-configure_serial() {
-  log "Activation du serial hardware (UART)..."
-  raspi-config nonint do_serial 1 0
-  ok "Serial hardware activé"
-}
+  log "Installation des dépendances : ${pkgs[*]}"
+  apt-get install -y -qq "${pkgs[@]}"
   ok "Dépendances installées"
 }
 
@@ -186,7 +192,7 @@ EOF
   cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf <<EOF
 [Service]
 ExecStart=
-ExecStart=-/sbin/agetty --autologin $INSTALL_USER --noclear %I \$TERM
+ExecStart=-/sbin/agetty --autologin $INSTALL_USER --noclear %I \\$TERM
 EOF
   ok "Autologin configuré"
 }

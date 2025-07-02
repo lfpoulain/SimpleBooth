@@ -564,7 +564,7 @@
                                              data-filename="{{ photo.filename }}"
                                              data-type="{{ photo.type }}"
                                              data-date="{{ photo.date }}"
-                                             data-size="{{ "%.1f"|format(photo.size / 1024) }}"
+                                             data-size="{{ "%.1f"|format(photo.size_kb) }}"
                                              onclick="openPhotoModal(this)">
                                     </td>
                                     <td>
@@ -572,7 +572,7 @@
                                            data-filename="{{ photo.filename }}"
                                            data-type="{{ photo.type }}"
                                            data-date="{{ photo.date }}"
-                                           data-size="{{ "%.1f"|format(photo.size / 1024) }}"
+                                           data-size="{{ "%.1f"|format(photo.size_kb) }}"
                                            onclick="openPhotoModal(this)">
                                             {{ photo.filename }}
                                         </a>
@@ -592,7 +592,7 @@
                                         {% endif %}
                                     </td>
                                     <td>{{ photo.date }}</td>
-                                    <td>{{ "%.1f"|format(photo.size / 1024) }} KB</td>
+                                    <td>{{ "%.1f"|format(photo.size_kb) }} KB</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
