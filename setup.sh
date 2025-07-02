@@ -24,9 +24,12 @@ ok()    { echo -e "${COLORS[G]}✔ $*${COLORS[N]}"; }
 warn()  { echo -e "${COLORS[Y]}⚠ $*${COLORS[N]}"; }
 error() { echo -e "${COLORS[R]}✖ $*${COLORS[N]}" >&2; exit 1; }
 
-# -------------------- Variables --------------------
+# -------------------- Variables utilisateur --------------------
+# Installer dans le home de l'utilisateur sudo, pas root
+INSTALL_USER="${SUDO_USER:-${USER}}"
+HOME_DIR="$(eval echo ~${INSTALL_USER})"
 REPO_URL="https://github.com/lfpoulain/SimpleBooth"
-APP_DIR="${HOME}/SimpleBooth"
+APP_DIR="$HOME_DIR/SimpleBooth"
 VENV_DIR="$APP_DIR/venv"
 LOG_FILE="/tmp/simplebooth_install.log"
 WAVE_ENABLED=true
@@ -95,7 +98,6 @@ configure_waveshare() {
   cp "$file" "${file}.bak.$(date +%Y%m%d_%H%M%S)"
   ok "Sauvegarde $file"
 
-  # Ajouter dtoverlay si manquant
   grep -q '^dtoverlay=vc4-kms-v3d' "$file" || echo 'dtoverlay=vc4-kms-v3d' >> "$file"
   cat >> "$file" <<EOF
 
@@ -111,33 +113,35 @@ clone_or_update_repo() {
     log "Mise à jour du repo existant"
     git -C "$APP_DIR" pull -q
   else
-    log "Clonage du repository"
-    git clone -q "$REPO_URL" "$APP_DIR"
+    log "Clonage du repository dans $APP_DIR"
+    mkdir -p "$HOME_DIR"
+    chown "$INSTALL_USER":"$INSTALL_USER" "$HOME_DIR"
+    sudo -u "$INSTALL_USER" git clone -q "$REPO_URL" "$APP_DIR"
   fi
   ok "Repository prêt"
 }
 
 setup_python_env() {
-  log "Création venv Python"
-  python3 -m venv "$VENV_DIR"
-  source "$VENV_DIR/bin/activate"
-  pip install --upgrade pip -q
+  log "Création venv Python dans $VENV_DIR"
+  mkdir -p "$APP_DIR"
+  chown -R "$INSTALL_USER":"$INSTALL_USER" "$APP_DIR"
+  sudo -u "$INSTALL_USER" python3 -m venv "$VENV_DIR"
+  sudo -u "$INSTALL_USER" bash -lc "source '$VENV_DIR/bin/activate' && pip install --upgrade pip -q"
   if [[ -f "$APP_DIR/requirements.txt" ]]; then
-    pip install -r "$APP_DIR/requirements.txt" -q
+    sudo -u "$INSTALL_USER" bash -lc "source '$VENV_DIR/bin/activate' && pip install -r '$APP_DIR/requirements.txt' -q"
   else
-    pip install flask pillow numpy -q
+    sudo -u "$INSTALL_USER" bash -lc "source '$VENV_DIR/bin/activate' && pip install flask pillow numpy -q"
   fi
-  deactivate
   ok "Environnement Python prêt"
 }
 
 setup_kiosk() {
   log "Configuration mode kiosk"
-  local autostart_dir="${HOME}/.config/autostart"
+  local autostart_dir="$HOME_DIR/.config/autostart"
   mkdir -p "$autostart_dir"
+  chown -R "$INSTALL_USER":"$INSTALL_USER" "$autostart_dir"
 
-  # start script
-  cat > "$HOME/start_simplebooth.sh" <<EOF
+  cat > "$HOME_DIR/start_simplebooth.sh" <<EOF
 #!/usr/bin/env bash
 xset s off dpms s noblank
 unclutter -idle 0.1 -root &
@@ -148,17 +152,18 @@ python app.py &
 sleep 5
 exec $CHROMIUM_PKG --kiosk --no-sandbox --disable-infobars http://localhost:5000
 EOF
-  chmod +x "$HOME/start_simplebooth.sh"
+  chmod +x "$HOME_DIR/start_simplebooth.sh"
+  chown "$INSTALL_USER":"$INSTALL_USER" "$HOME_DIR/start_simplebooth.sh"
 
-  # Autostart desktop
   cat > "$autostart_dir/simplebooth.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=SimpleBooth Kiosk
-Exec=$HOME/start_simplebooth.sh
+Exec=$HOME_DIR/start_simplebooth.sh
 X-GNOME-Autostart-enabled=true
 Comment=Démarrage SimpleBooth en mode kiosk
 EOF
+  chown "$INSTALL_USER":"$INSTALL_USER" "$autostart_dir/simplebooth.desktop"
   ok "Mode kiosk configuré"
 }
 
@@ -171,7 +176,7 @@ Description=SimpleBooth Kiosk
 After=graphical.target
 
 [Service]
-User=$SUDO_USER
+User=$INSTALL_USER
 Environment=DISPLAY=:0
 ExecStart=/usr/bin/startx -- -nocursor
 Restart=on-failure
@@ -183,12 +188,11 @@ EOF
   systemctl enable simplebooth-kiosk.service
   ok "Service systemd activé"
 
-  # Autologin
   mkdir -p /etc/systemd/system/getty@tty1.service.d
   cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf <<EOF
 [Service]
 ExecStart=
-ExecStart=-/sbin/agetty --autologin $SUDO_USER --noclear %I \$TERM
+ExecStart=-/sbin/agetty --autologin $INSTALL_USER --noclear %I \$TERM
 EOF
   ok "Autologin configuré"
 }
@@ -196,7 +200,7 @@ EOF
 # -------------------- Main --------------------
 main() {
   require_root
-  log "Début de l'installation"
+  log "Installation lancée pour l'utilisateur $INSTALL_USER ($HOME_DIR)"
 
   update_system
   install_dependencies
