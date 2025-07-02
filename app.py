@@ -903,65 +903,6 @@ def save_admin_config():
     
     return redirect(url_for('admin'))
 
-@app.route('/api/printer_status')
-def check_printer_status():
-    """API pour vérifier l'état de l'imprimante"""
-    status = {
-        'connected': False,
-        'enabled': config.get('printer_enabled', False),
-        'port': config.get('printer_port', ''),
-        'baudrate': config.get('printer_baudrate', 9600),
-        'has_paper': False,
-        'message': ''
-    }
-    
-    # Si l'imprimante n'est pas activée, on retourne directement
-    if not status['enabled']:
-        status['message'] = 'Imprimante désactivée dans la configuration'
-        return jsonify(status)
-    
-    try:
-        # Vérifier si le module escpos est disponible
-        import escpos
-        from escpos.printer import Serial
-        
-        # Vérifier la connexion à l'imprimante
-        try:
-            # Créer une instance de l'imprimante avec les paramètres de configuration
-            printer = Serial(
-                devfile=status['port'],
-                baudrate=status['baudrate'],
-                timeout=1
-            )
-            
-            # Vérifier l'état du papier
-            printer.write(b'\x10\x04\x04')  # Commande ESC/POS pour vérifier l'état du papier
-            response = printer.read()
-            
-            # Analyser la réponse
-            if response:
-                status['connected'] = True
-                # Bit 2 à 1 indique un manque de papier (varie selon les imprimantes)
-                # Cette logique peut nécessiter des ajustements selon le modèle d'imprimante
-                if len(response) > 0 and (response[0] & 0x04) == 0:
-                    status['has_paper'] = True
-                    status['message'] = 'Imprimante connectée et prête'
-                else:
-                    status['message'] = 'Imprimante connectée mais manque de papier'
-            else:
-                status['message'] = 'Imprimante connectée mais pas de réponse'
-            
-            # Fermer la connexion
-            printer.close()
-            
-        except Exception as e:
-            status['message'] = f'Erreur de connexion: {str(e)}'
-            
-    except ImportError:
-        status['message'] = 'Module python-escpos non installé'
-    
-    return jsonify(status)
-
 @app.route('/admin/delete_photos', methods=['POST'])
 def delete_all_photos():
     """Supprimer toutes les photos (normales et avec effet)"""

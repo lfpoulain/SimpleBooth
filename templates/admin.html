@@ -564,7 +564,7 @@
                                              data-filename="{{ photo.filename }}"
                                              data-type="{{ photo.type }}"
                                              data-date="{{ photo.date }}"
-                                             data-size="{{ "%.1f"|format(photo.size|float / 1024) }}"
+                                             data-size="{{ "%.1f"|format(photo.size / 1024) }}"
                                              onclick="openPhotoModal(this)">
                                     </td>
                                     <td>
@@ -572,7 +572,7 @@
                                            data-filename="{{ photo.filename }}"
                                            data-type="{{ photo.type }}"
                                            data-date="{{ photo.date }}"
-                                           data-size="{{ "%.1f"|format(photo.size|float / 1024) }}"
+                                           data-size="{{ "%.1f"|format(photo.size / 1024) }}"
                                            onclick="openPhotoModal(this)">
                                             {{ photo.filename }}
                                         </a>
@@ -592,7 +592,7 @@
                                         {% endif %}
                                     </td>
                                     <td>{{ photo.date }}</td>
-                                    <td>{{ "%.1f"|format(photo.size|float / 1024) }} KB</td>
+                                    <td>{{ "%.1f"|format(photo.size / 1024) }} KB</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -1046,10 +1046,9 @@ function savePrinterConfigAndRefresh() {
     .then(response => {
         if (response.ok) {
             // Rafraîchir le statut de l'imprimante après sauvegarde
-            // Délai augmenté pour s'assurer que la configuration est bien prise en compte
             setTimeout(() => {
                 checkPrinterStatus();
-            }, 1000);
+            }, 500);
         }
     })
     .catch(error => {
@@ -1091,28 +1090,23 @@ function updatePrinterStatus(data) {
     const statusElement = document.getElementById('printer-status');
     let alertClass, icon, message;
     
-    if (!data.enabled) {
-        // Imprimante désactivée
-        alertClass = 'alert-warning';
-        icon = 'fas fa-power-off';
-        message = 'Imprimante désactivée dans la configuration';
-    } else if (data.connected) {
-        if (data.has_paper) {
-            // Imprimante connectée et avec papier
+    switch(data.status) {
+        case 'ok':
             alertClass = 'alert-success';
             icon = 'fas fa-check-circle';
             message = `Imprimante connectée sur ${data.port} (${data.baudrate} bps)`;
-        } else {
-            // Imprimante connectée mais sans papier
+            break;
+        case 'disabled':
             alertClass = 'alert-warning';
-            icon = 'fas fa-exclamation-circle';
-            message = 'Imprimante connectée mais manque de papier';
-        }
-    } else {
-        // Erreur de connexion
-        alertClass = 'alert-danger';
-        icon = 'fas fa-exclamation-triangle';
-        message = data.message || 'Erreur de connexion à l\'imprimante';
+            icon = 'fas fa-power-off';
+            message = 'Imprimante désactivée dans la configuration';
+            break;
+        case 'error':
+        default:
+            alertClass = 'alert-danger';
+            icon = 'fas fa-exclamation-triangle';
+            message = data.message || 'Erreur inconnue';
+            break;
     }
     
     statusElement.className = `alert ${alertClass} d-flex align-items-center`;
@@ -1120,8 +1114,8 @@ function updatePrinterStatus(data) {
         <i class="${icon} me-2"></i>
         <div>
             <strong>Statut :</strong> ${message}
-            ${data.connected ? 
-                `<br><small>Papier : ${data.has_paper ? '✓ Disponible' : '⚠ Manquant'}</small>` : 
+            ${data.paper_status && data.paper_status !== 'unknown' ? 
+                `<br><small>Papier : ${data.paper_status === 'ok' ? '✓ Disponible' : '⚠ Problème'}</small>` : 
                 ''}
         </div>
     `;

@@ -5,61 +5,61 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-12">
-        <div class="card shadow-sm">
-            <div class="card-body text-center p-2 p-sm-3">
+        <div class="card">
+            <div class="card-body text-center">
                 
                 <!-- Aperçu de la photo -->
-                <div class="mb-3">
+                <div class="mb-4">
                     <img src="{{ url_for('serve_photo', filename=photo) }}" 
                          alt="Photo capturée" 
-                         class="photo-preview img-fluid"
-                         style="max-height: 435px; max-width: 100%;">
+                         class="photo-preview"
+                         style="max-height: 500px;">
                 </div>
                 
                 <!-- Question -->
                 
                 <!-- Boutons d'action -->
-                <div class="row g-2">
+                <div class="row g-3">
                     {% if config.effect_enabled %}
-                    <div class="col-3">
-                        <button class="btn btn-warning w-100 py-3" onclick="applyEffect()">
+                    <div class="col-md-3">
+                        <button class="btn btn-warning w-100" onclick="applyEffect()">
                             <i class="fas fa-magic me-2"></i>
                             Effet
                         </button>
                     </div>
-                    <div class="col-3">
-                        <button class="btn btn-success w-100 py-3" onclick="printPhoto()">
+                    <div class="col-md-3">
+                        <button class="btn btn-success w-100" onclick="printPhoto()">
                             <i class="fas fa-print me-2"></i>
                             Imprimer
                         </button>
                     </div>
-                    <div class="col-3">
-                        <a href="{{ url_for('index') }}" class="btn btn-primary w-100 py-3">
+                    <div class="col-md-3">
+                        <a href="{{ url_for('index') }}" class="btn btn-primary w-100">
                             <i class="fas fa-redo me-2"></i>
                             Reprendre
                         </a>
                     </div>
-                    <div class="col-3">
-                        <button class="btn btn-danger w-100 py-3" onclick="deletePhoto()">
+                    <div class="col-md-3">
+                        <button class="btn btn-danger w-100" onclick="deletePhoto()">
                             <i class="fas fa-trash me-2"></i>
                             Supprimer
                         </button>
                     </div>
                     {% else %}
-                    <div class="col-4">
-                        <button class="btn btn-success w-100 py-3" onclick="printPhoto()">
+                    <div class="col-md-4">
+                        <button class="btn btn-success w-100" onclick="printPhoto()">
                             <i class="fas fa-print me-2"></i>
                             Imprimer
                         </button>
                     </div>
-                    <div class="col-4">
-                        <a href="{{ url_for('index') }}" class="btn btn-primary w-100 py-3">
+                    <div class="col-md-4">
+                        <a href="{{ url_for('index') }}" class="btn btn-primary w-100">
                             <i class="fas fa-redo me-2"></i>
                             Reprendre
                         </a>
                     </div>
-                    <div class="col-4">
-                        <button class="btn btn-danger w-100 py-3" onclick="deletePhoto()">
+                    <div class="col-md-4">
+                        <button class="btn btn-danger w-100" onclick="deletePhoto()">
                             <i class="fas fa-trash me-2"></i>
                             Supprimer
                         </button>
@@ -75,55 +75,58 @@
 
 <!-- Overlay d'impression en plein écran -->
 <div id="printOverlay" class="d-none" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center;">
-    <div class="text-center text-white p-3">
-        <div class="mb-3">
-            <i class="fas fa-spinner fa-spin" style="font-size: 3rem;"></i>
+    <div class="text-center text-white">
+        <div class="mb-4">
+            <i class="fas fa-spinner fa-spin" style="font-size: 4rem;"></i>
         </div>
-        <h3 class="mb-2">Impression en cours</h3>
+        <h2 class="mb-3">Impression en cours...</h2>
         <p class="mb-0">Veuillez patienter</p>
     </div>
 </div>
 
 <!-- Overlay d'effet IA en plein écran -->
 <div id="effectOverlay" class="d-none" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center;">
-    <div class="text-center text-white p-3">
-        <div class="mb-3">
-            <i class="fas fa-magic fa-spin" style="font-size: 3rem; color: #ffc107;"></i>
+    <div class="text-center text-white">
+        <div class="mb-4">
+            <i class="fas fa-magic fa-spin" style="font-size: 4rem; color: #ffc107;"></i>
         </div>
-        <h3 class="mb-2">Effet IA en cours</h3>
-        <p class="mb-0">Transformation de l'image</p>
+        <h2 class="mb-3">Application de l'effet IA...</h2>
+        <p class="mb-0">Transformation en cours, veuillez patienter</p>
     </div>
 </div>
 
 <!-- Modale de confirmation de suppression -->
 <div class="modal fade" id="deletePhotoModal" tabindex="-1" aria-labelledby="deletePhotoModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-danger text-white py-2">
+            <div class="modal-header bg-danger text-white">
                 <h5 class="modal-title" id="deletePhotoModalLabel">
-                    <i class="fas fa-exclamation-triangle me-1"></i>
-                    Supprimer
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Supprimer la photo
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body text-center p-3">
-                <div class="mb-2">
-                    <i class="fas fa-trash-alt text-danger" style="font-size: 2.5rem;"></i>
+            <div class="modal-body text-center">
+                <div class="mb-3">
+                    <i class="fas fa-trash-alt text-danger" style="font-size: 3rem;"></i>
                 </div>
-                <h6 class="mb-2">Supprimer cette photo ?</h6>
-                <div class="alert alert-warning py-2 px-3 mb-2" role="alert">
-                    <i class="fas fa-exclamation-triangle me-1"></i>
-                    <small>Action irréversible</small>
+                <h6 class="mb-3">Êtes-vous sûr de vouloir supprimer cette photo ?</h6>
+                <div class="alert alert-warning" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Attention :</strong> Cette action est irréversible !
                 </div>
+                <p class="text-muted mb-0">
+                    <small>La photo sera définitivement supprimée du système</small>
+                </p>
             </div>
-            <div class="modal-footer p-2 justify-content-center">
-                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>
                     Annuler
                 </button>
-                <button type="button" class="btn btn-sm btn-danger" onclick="confirmDeletePhoto()">
-                    <i class="fas fa-trash-alt me-1"></i>
-                    Supprimer
+                <button type="button" class="btn btn-danger" onclick="confirmDeletePhoto()">
+                    <i class="fas fa-trash-alt me-2"></i>
+                    Supprimer la photo
                 </button>
             </div>
         </div>
@@ -157,11 +160,11 @@ async function printPhoto() {
         if (result.success) {
             // Succès de l'impression - modifier le contenu de l'overlay
             overlay.innerHTML = 
-                '<div class="text-center text-white p-3">' +
-                '<div class="mb-3">' +
-                '<i class="fas fa-check-circle" style="font-size: 3rem; color: #28a745;"></i>' +
+                '<div class="text-center text-white">' +
+                '<div class="mb-4">' +
+                '<i class="fas fa-check-circle" style="font-size: 4rem; color: #28a745;"></i>' +
                 '</div>' +
-                '<h3 class="mb-2">Impression terminée</h3>' +
+                '<h2 class="mb-3">Impression terminée !</h2>' +
                 '<p class="mb-0">Redirection en cours...</p>' +
                 '</div>';
             
@@ -173,11 +176,11 @@ async function printPhoto() {
         } else if (result.error_type === 'no_paper') {
             // Cas spécifique du manque de papier - rediriger immédiatement vers l'index
             overlay.innerHTML = 
-                '<div class="text-center text-white p-3">' +
-                '<div class="mb-3">' +
-                '<i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #ffc107;"></i>' +
+                '<div class="text-center text-white">' +
+                '<div class="mb-4">' +
+                '<i class="fas fa-exclamation-triangle" style="font-size: 4rem; color: #ffc107;"></i>' +
                 '</div>' +
-                '<h3 class="mb-2">Plus de papier</h3>' +
+                '<h2 class="mb-3">Plus de papier !</h2>' +
                 '<p class="mb-0">Redirection en cours...</p>' +
                 '</div>';
             
@@ -195,13 +198,13 @@ async function printPhoto() {
         
         // Afficher l'erreur dans l'overlay
         overlay.innerHTML = 
-            '<div class="text-center text-white p-3">' +
-            '<div class="mb-3">' +
-            '<i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #dc3545;"></i>' +
+            '<div class="text-center text-white">' +
+            '<div class="mb-4">' +
+            '<i class="fas fa-exclamation-triangle" style="font-size: 4rem; color: #dc3545;"></i>' +
             '</div>' +
-            '<h3 class="mb-2">Erreur d\'impression</h3>' +
-            '<p class="mb-2">' + error.message + '</p>' +
-            '<button class="btn btn-light btn-sm" onclick="closeOverlay()">Fermer</button>' +
+            '<h2 class="mb-3">Erreur d\'impression</h2>' +
+            '<p class="mb-3">' + error.message + '</p>' +
+            '<button class="btn btn-light" onclick="closeOverlay()">Fermer</button>' +
             '</div>';
         
         // Réactiver le bouton
@@ -274,11 +277,11 @@ async function applyEffect() {
         if (result.success) {
             // Succès de l'effet - modifier le contenu de l'overlay
             overlay.innerHTML = 
-                '<div class="text-center text-white p-3">' +
-                '<div class="mb-3">' +
-                '<i class="fas fa-check-circle" style="font-size: 3rem; color: #28a745;"></i>' +
+                '<div class="text-center text-white">' +
+                '<div class="mb-4">' +
+                '<i class="fas fa-check-circle" style="font-size: 4rem; color: #28a745;"></i>' +
                 '</div>' +
-                '<h3 class="mb-2">Effet appliqué</h3>' +
+                '<h2 class="mb-3">Effet appliqué avec succès !</h2>' +
                 '<p class="mb-0">Rechargement de la page...</p>' +
                 '</div>';
             
