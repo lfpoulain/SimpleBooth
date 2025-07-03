@@ -695,8 +695,8 @@ async def apply_effect_async(photo_path):
             positivePrompt=config.get('effect_prompt', 'Transforme cette image en illustration de style Studio Ghibli'),
             referenceImages=[f"data:image/jpeg;base64,{img_base64}"],
             model="runware:106@1",
-            height=752,
-            width=1392,
+            height=752, 
+            width=1392,  
             steps=config.get('effect_steps', 5),
             CFGScale=2.5,
             numberResults=1
