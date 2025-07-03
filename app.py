@@ -92,7 +92,7 @@ def check_printer_status():
             }
         
         # Récupérer la configuration de l'imprimante
-        printer_port = config.get('printer_port', '/dev/ttyUSB0')
+        printer_port = config.get('printer_port', '/dev/ttyAMA0')
         printer_baudrate = config.get('printer_baudrate', 9600)
         
         # Vérifier si l'imprimante est activée
@@ -241,7 +241,7 @@ def detect_serial_ports():
         if sys.platform.startswith('win'):
             available_ports = [('COM1', 'COM1'), ('COM3', 'COM3')]
         else:
-            available_ports = [('/dev/ttyUSB0', '/dev/ttyUSB0'), ('/dev/ttyS0', '/dev/ttyS0')]
+            available_ports = [('/dev/ttyAMA0', '/dev/AMA0'), ('/dev/ttyS0', '/dev/ttyS0')]
     
     return available_ports
 
@@ -881,7 +881,7 @@ def save_admin_config():
         
         # Configuration de l'imprimante
         config['printer_enabled'] = 'printer_enabled' in request.form
-        config['printer_port'] = request.form.get('printer_port', '/dev/ttyUSB0')
+        config['printer_port'] = request.form.get('printer_port', '/dev/AMA0')
         
         printer_baudrate = request.form.get('printer_baudrate', '9600').strip()
         try:

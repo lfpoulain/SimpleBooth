@@ -236,6 +236,44 @@ EOF
   ok "Écran Waveshare configuré avec succès"
 }
 
+configure_serial() {
+  step "Configuration du port série GPIO"
+  progress "Recherche du fichier config.txt..."
+  local cfg=(/boot/firmware/config.txt /boot/config.txt) file=""
+  for f in "${cfg[@]}"; do 
+    [[ -f "$f" ]] && { file="$f"; break; }
+  done
+  [[ -n "$file" ]] || { error "config.txt introuvable - système non supporté"; }
+
+  progress "Configuration du port série..."
+  
+  # Activer le port série UART (comme raspi-config)
+  if ! grep -q '^enable_uart=1' "$file"; then
+    echo "enable_uart=1" >> "$file"
+    log "UART activé dans config.txt"
+  else
+    log "UART déjà activé"
+  fi
+  
+  # Désactiver la console série sur ttyAMA0 pour libérer le port
+  if [[ -f /boot/cmdline.txt ]]; then
+    sed -i 's/console=serial0,115200 //g' /boot/cmdline.txt
+    sed -i 's/console=ttyAMA0,115200 //g' /boot/cmdline.txt
+    log "Console série désactivée sur ttyAMA0"
+  elif [[ -f /boot/firmware/cmdline.txt ]]; then
+    sed -i 's/console=serial0,115200 //g' /boot/firmware/cmdline.txt
+    sed -i 's/console=ttyAMA0,115200 //g' /boot/firmware/cmdline.txt
+    log "Console série désactivée sur ttyAMA0"
+  fi
+  
+  # Ajouter l'utilisateur au groupe dialout pour accès série
+  usermod -a -G dialout "$INSTALL_USER" || warn "Échec ajout groupe dialout"
+  log "Utilisateur $INSTALL_USER ajouté au groupe dialout"
+  
+  ok "Port série GPIO configuré avec succès"
+  warn "Redémarrage requis pour activer le port série"
+}
+
 setup_python_env() {
   step "Configuration environnement Python"
   command -v python3 >/dev/null || error "Python 3 non installé"
@@ -359,6 +397,14 @@ main() {
     WAVE_ENABLED=false
     log "Configuration Waveshare ignorée"
   fi
+  
+  # Configuration du port série pour l'imprimante
+  if confirm "Configurer le port série GPIO (/dev/ttyAMA0)? (o/N)"; then
+    configure_serial
+  else
+    log "Configuration port série ignorée"
+  fi
+  
   setup_python_env
   setup_kiosk
   setup_systemd
