@@ -58,7 +58,7 @@ DEFAULT_CONFIG = {
     'usb_camera_id': 0,  # ID de la caméra USB (généralement 0 pour la première caméra)
     # Paramètres d'imprimante
     'printer_enabled': True,
-    'printer_port': '/dev/ttyUSB0',  # Port série de l'imprimante
+    'printer_port': '/dev/AMA0',  # Port série de l'imprimante
     'printer_baudrate': 9600,  # Vitesse de communication
     'print_resolution': 384  # Résolution d'impression
 }
