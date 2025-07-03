@@ -81,7 +81,7 @@ configure_waveshare() {
 
 # Waveshare 7" DSI - SimpleBooth
 # Rotation: 0, 90, 180, ou 270 (défaut 0)
-dtoverlay=vc4-kms-dsi-waveshare-panel,rotate=270,7_0_inchC,i2c1
+dtoverlay=vc4-kms-dsi-waveshare-panel,7_0_inchC,i2c1
 EOF
   ok "Waveshare configuré avec rotation"
 }
