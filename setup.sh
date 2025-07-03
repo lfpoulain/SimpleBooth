@@ -57,14 +57,14 @@ start_log_monitor() {
     # Lire la dernière ligne du log temporaire
     local last_line=""
     if [[ -f "$temp_log" ]]; then
-      last_line=$(tail -n1 "$temp_log" 2>/dev/null | sed 's/^[[:space:]]*//' | cut -c1-60)
+      last_line=$(tail -n1 "$temp_log" 2>/dev/null | sed 's/^[[:space:]]*//' | cut -c1-50)
     fi
     
     # Afficher le spinner avec la dernière ligne (version simple)
     if [[ -n "$last_line" && "$last_line" != "" ]]; then
-      printf "\r  ${SPINNER_CHARS:$i:1} $base_message\n  └─ $last_line...\033[1A"
+      printf "\r  ${SPINNER_CHARS:$i:1} %s\n  └─ %s...\033[1A" "$base_message" "$last_line"
     else
-      printf "\r  ${SPINNER_CHARS:$i:1} $base_message"
+      printf "\r  ${SPINNER_CHARS:$i:1} %s" "$base_message"
     fi
     
     i=$(( (i + 1) % ${#SPINNER_CHARS} ))
@@ -111,7 +111,7 @@ run_with_spinner() {
   
   # Pour les commandes courtes, juste un spinner simple
   while true; do
-    printf "\r  ${SPINNER_CHARS:$i:1} $message"
+    printf "\r  ${SPINNER_CHARS:$i:1} %s" "$message"
     i=$(( (i + 1) % ${#SPINNER_CHARS} ))
     sleep 0.1
   done &
@@ -168,7 +168,7 @@ confirm() {
   local default="${2:-N}" 
   local resp
   # Affichage simple sans codes couleur dans le prompt
-  echo -n "❓ $prompt "
+  printf "❓ %s " "$prompt"
   read -r resp
   [[ "${resp:-$default}" =~ ^[Oo]$ ]]
 }
