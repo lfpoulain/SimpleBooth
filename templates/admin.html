@@ -864,8 +864,12 @@ function deleteAllPhotos() {
 }
 
 function confirmDeleteAllPhotos() {
-    // Rediriger vers la route de suppression
-    window.location.href = "{{ url_for('delete_all_photos') }}";
+    // Créer un formulaire pour envoyer une requête POST
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = "{{ url_for('delete_all_photos') }}";
+    document.body.appendChild(form);
+    form.submit();
 }
 
 function cancelDeleteAllPhotos() {
