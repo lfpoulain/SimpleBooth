@@ -11,6 +11,7 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             min-height: 100vh;
+            margin: 0;
             touch-action: manipulation;
         }
         
@@ -131,9 +132,26 @@
                 padding: 12px 20px;
                 min-height: 50px;
             }
-            
+
             .countdown {
                 font-size: 6em;
+            }
+        }
+
+        /* Ajustements pour écran kiosk 1024x600 */
+        @media (max-width: 1024px) and (max-height: 600px) {
+            .container-fluid {
+                padding: 10px;
+            }
+
+            .btn {
+                font-size: 0.95em;
+                padding: 10px 16px;
+                min-height: 48px;
+            }
+
+            .countdown {
+                font-size: 5em;
             }
         }
     </style>
