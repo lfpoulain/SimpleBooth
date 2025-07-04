@@ -3,22 +3,27 @@
 
 from flask import Flask, render_template, request, jsonify, send_from_directory, redirect, url_for, flash, Response, abort
 import os
-import json
 import time
 import subprocess
 import threading
 import asyncio
 import requests
-import cv2
 import logging
 import signal
 import atexit
 import base64
 import sys
 from datetime import datetime
-from telegram import Bot
-from telegram.error import TelegramError
 from runware import Runware, IImageInference
+from config_utils import (
+    PHOTOS_FOLDER,
+    EFFECT_FOLDER,
+    load_config,
+    save_config,
+    ensure_directories,
+)
+from camera_utils import UsbCamera, detect_cameras
+from telegram_utils import send_to_telegram
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'photobooth_secret_key_2024')
@@ -26,58 +31,8 @@ app.secret_key = os.environ.get('SECRET_KEY', 'photobooth_secret_key_2024')
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 logger = logging.getLogger(__name__)
 
-# Configuration
-PHOTOS_FOLDER = 'photos'
-EFFECT_FOLDER = 'effet'
-CONFIG_FILE = 'config.json'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-
-# Créer les dossiers s'ils n'existent pas
-logger.info(f"[DEBUG] Création du dossier photos: {PHOTOS_FOLDER}")
-os.makedirs(PHOTOS_FOLDER, exist_ok=True)
-logger.info(f"[DEBUG] Création du dossier effet: {EFFECT_FOLDER}")
-os.makedirs(EFFECT_FOLDER, exist_ok=True)
-logger.info(f"[DEBUG] Dossiers créés - Photos: {os.path.exists(PHOTOS_FOLDER)}, Effet: {os.path.exists(EFFECT_FOLDER)}")
-
-# Configuration par défaut
-DEFAULT_CONFIG = {
-    'footer_text': 'Photobooth',
-    'timer_seconds': 3,
-    'high_density': False,
-    'slideshow_enabled': False,
-    'slideshow_delay': 60,
-    'slideshow_source': 'photos',
-    'effect_enabled': False,
-    'effect_prompt': 'Transform this photo into a beautiful ghibli style',
-    'effect_steps': 5,
-    'runware_api_key': '',
-    'telegram_enabled': False,
-    'telegram_bot_token': '',
-    'telegram_chat_id': '',
-    'telegram_send_type': 'photos',
-    'camera_type': 'picamera',  # 'picamera' ou 'usb'
-    'usb_camera_id': 0,  # ID de la caméra USB (généralement 0 pour la première caméra)
-    # Paramètres d'imprimante
-    'printer_enabled': True,
-    'printer_port': '/dev/ttyAMA0',  # Port série de l'imprimante
-    'printer_baudrate': 9600,  # Vitesse de communication
-    'print_resolution': 384  # Résolution d'impression
-}
-
-def load_config():
-    """Charger la configuration depuis le fichier JSON"""
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except:
-            pass
-    return DEFAULT_CONFIG.copy()
-
-def save_config(config_data):
-    """Sauvegarder la configuration dans un fichier JSON"""
-    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
-        json.dump(config_data, f, indent=2, ensure_ascii=False)
+# Initialiser les dossiers nécessaires
+ensure_directories()
 
 def check_printer_status():
     """Vérifier l'état de l'imprimante thermique"""
@@ -140,71 +95,6 @@ def check_printer_status():
             'paper_status': 'unknown'
         }
 
-async def _send_telegram_photo(bot_token, chat_id, photo_path, caption):
-    """Fonction asynchrone pour envoyer une photo via Telegram"""
-    bot = Bot(token=bot_token)
-    
-    # Vérifier et nettoyer l'ID du chat
-    cleaned_chat_id = chat_id.strip()
-    
-    # Si c'est un nom d'utilisateur ou canal, s'assurer qu'il commence par @
-    if cleaned_chat_id and cleaned_chat_id[0].isalpha() and not cleaned_chat_id.startswith('@'):
-        cleaned_chat_id = '@' + cleaned_chat_id
-    
-    logger.info(f"[TELEGRAM] Utilisation de l'ID de chat: '{cleaned_chat_id}'")
-    
-    try:
-        with open(photo_path, 'rb') as photo_file:
-            await bot.send_photo(
-                chat_id=cleaned_chat_id,
-                photo=photo_file,
-                caption=caption
-            )
-    except Exception as e:
-        if "chat not found" in str(e).lower():
-            logger.info(f"[TELEGRAM] ERREUR: Chat introuvable avec l'ID '{cleaned_chat_id}'")
-            logger.info("[TELEGRAM] Assurez-vous que:")
-            logger.info("   - Le bot a été ajouté au groupe/canal")
-            logger.info("   - Pour un groupe: l'ID commence par '-' (ex: -123456789)")
-            logger.info("   - Pour un canal: utilisez '@nom_du_canal' ou ajoutez le bot comme admin")
-            logger.info("   - Pour un chat privé: utilisez l'ID numérique de l'utilisateur")
-        raise
-
-def send_to_telegram(photo_path, photo_type="photo"):
-    """Envoyer une photo sur Telegram"""
-    if not config.get('telegram_enabled', False):
-        return
-    
-    bot_token = config.get('telegram_bot_token', '')
-    chat_id = config.get('telegram_chat_id', '')
-    
-    if not bot_token or not chat_id:
-        logger.info("[TELEGRAM] Configuration incomplète (token ou chat_id manquant)")
-        return
-    
-    try:
-        logger.info(f"[TELEGRAM] Envoi de {photo_path} vers le chat {chat_id}")
-        
-        # Préparer le message
-        caption = f"📸 Nouvelle photo du photobooth!"
-        if photo_type == "effet":
-            caption = f"🎨 Photo avec effet IA du photobooth!"
-        
-        # Exécuter la coroutine dans une nouvelle boucle asyncio
-        async def send_photo_async():
-            try:
-                await _send_telegram_photo(bot_token, chat_id, photo_path, caption)
-                logger.info("[TELEGRAM] Photo envoyée avec succès!")
-            except Exception as e:
-                logger.info(f"[TELEGRAM] Erreur dans la coroutine: {e}")
-                
-        # Exécuter dans une nouvelle boucle d'événements asyncio
-        asyncio.run(send_photo_async())
-        
-    except TelegramError as e:
-        logger.info(f"[TELEGRAM] Erreur Telegram: {e}")
-    except Exception as e:
-        logger.info(f"[TELEGRAM] Erreur lors de l'envoi: {e}")
 
 # Fonction pour détecter les ports série disponibles
 def detect_serial_ports():
@@ -246,250 +136,6 @@ def detect_serial_ports():
     
     return available_ports
 
-# Fonction pour détecter les caméras USB disponibles
-def detect_cameras():
-    """Détecter les caméras USB disponibles et retourner une liste de (id, nom)"""
-    available_cameras = []
-    logger.info("[CAMERA] Début de la détection des caméras USB...")
-    
-    # Tester les 10 premiers indices de caméra (0-9) pour être plus exhaustif
-    for i in range(10):
-        try:
-            logger.info(f"[CAMERA] Test de la caméra ID {i}...")
-            
-            # Essayer différents backends OpenCV
-            backends = [cv2.CAP_ANY, cv2.CAP_DSHOW, cv2.CAP_V4L2, cv2.CAP_GSTREAMER]
-            cap = None
-            
-            for backend in backends:
-                try:
-                    cap = cv2.VideoCapture(i, backend)
-                    if cap.isOpened():
-                        # Configurer une résolution plus élevée pour tester les capacités
-                        resolutions_to_test = [
-                            (1920, 1080),  # Full HD
-                            (1280, 720),   # HD
-                            (640, 480)     # VGA (fallback)
-                        ]
-                        
-                        best_resolution = None
-                        best_fps = 0
-                        
-                        for test_width, test_height in resolutions_to_test:
-                            # Essayer de configurer cette résolution
-                            cap.set(cv2.CAP_PROP_FRAME_WIDTH, test_width)
-                            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, test_height)
-                            cap.set(cv2.CAP_PROP_FPS, 30)  # Essayer 30 FPS
-                            
-                            # Vérifier si la résolution a été acceptée
-                            actual_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                            actual_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                            actual_fps = cap.get(cv2.CAP_PROP_FPS)
-                            
-                            # Tester si on peut lire une frame à cette résolution
-                            ret, frame = cap.read()
-                            if ret and frame is not None and frame.shape[1] >= test_width * 0.9 and frame.shape[0] >= test_height * 0.9:
-                                best_resolution = (actual_width, actual_height)
-                                best_fps = actual_fps
-                                logger.info(f"[CAMERA] Résolution {actual_width}x{actual_height} supportée pour la caméra {i}")
-                                break
-                            else:
-                                logger.info(f"[CAMERA] Résolution {test_width}x{test_height} non supportée pour la caméra {i}")
-                        
-                        if best_resolution:
-                            width, height = best_resolution
-                            fps = best_fps
-                            
-                            # Créer un nom descriptif
-                            backend_name = {
-                                cv2.CAP_ANY: "Auto",
-                                cv2.CAP_DSHOW: "DirectShow",
-                                cv2.CAP_V4L2: "V4L2",
-                                cv2.CAP_GSTREAMER: "GStreamer"
-                            }.get(backend, "Inconnu")
-                            
-                            name = f"Caméra {i} ({backend_name}) - {width}x{height}@{fps:.1f}fps"
-                            available_cameras.append((i, name))
-                            logger.info(f"[CAMERA] ✓ Caméra fonctionnelle détectée: {name}")
-                            break
-                        else:
-                            logger.info(f"[CAMERA] Caméra {i} ouverte mais ne peut pas lire de frame avec backend {backend_name}")
-                    cap.release()
-                except Exception as e:
-                    if cap:
-                        cap.release()
-                    logger.info(f"[CAMERA] Backend {backend} échoué pour caméra {i}: {e}")
-                    continue
-            
-            if not available_cameras or available_cameras[-1][0] != i:
-                logger.info(f"[CAMERA] ✗ Caméra {i} non disponible ou non fonctionnelle")
-                
-        except Exception as e:
-            logger.info(f"[CAMERA] Erreur générale lors de la détection de la caméra {i}: {e}")
-    
-    logger.info(f"[CAMERA] Détection terminée. {len(available_cameras)} caméra(s) fonctionnelle(s) trouvée(s)")
-    return available_cameras
-
-# Classe pour gérer la caméra USB
-class UsbCamera:
-    def __init__(self, camera_id=0):
-        self.camera_id = camera_id
-        self.camera = None
-        self.is_running = False
-        self.thread = None
-        self.frame = None
-        self.lock = threading.Lock()
-        self.error = None
-    
-    def start(self):
-        """Démarrer la caméra USB"""
-        if self.is_running:
-            return True
-        
-        return self._initialize_camera()
-    
-    def _initialize_camera(self):
-        """Initialiser la caméra avec différents backends"""
-        backends = [cv2.CAP_DSHOW, cv2.CAP_ANY, cv2.CAP_V4L2, cv2.CAP_GSTREAMER]
-        
-        for backend in backends:
-            try:
-                backend_name = {
-                    cv2.CAP_ANY: "Auto",
-                    cv2.CAP_DSHOW: "DirectShow",
-                    cv2.CAP_V4L2: "V4L2",
-                    cv2.CAP_GSTREAMER: "GStreamer"
-                }.get(backend, "Inconnu")
-                
-                logger.info(f"[USB CAMERA] Tentative d'ouverture de la caméra {self.camera_id} avec backend {backend_name}...")
-                self.camera = cv2.VideoCapture(self.camera_id, backend)
-                
-                if not self.camera.isOpened():
-                    logger.info(f"[USB CAMERA] Backend {backend_name} : impossible d'ouvrir la caméra {self.camera_id}")
-                    if self.camera:
-                        self.camera.release()
-                    continue
-                
-                # Tester et configurer la meilleure résolution disponible
-                resolutions_to_test = [
-                    (1920, 1080, "Full HD"),  # Full HD
-                    (1280, 720, "HD"),        # HD
-                    (640, 480, "VGA")         # VGA (fallback)
-                ]
-                
-                best_resolution = None
-                for test_width, test_height, res_name in resolutions_to_test:
-                    # Configurer la résolution
-                    self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, test_width)
-                    self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, test_height)
-                    self.camera.set(cv2.CAP_PROP_FPS, 25)  # Essayer 30 FPS
-                    
-                    # Vérifier la résolution réellement configurée
-                    actual_width = int(self.camera.get(cv2.CAP_PROP_FRAME_WIDTH))
-                    actual_height = int(self.camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                    actual_fps = self.camera.get(cv2.CAP_PROP_FPS)
-                    
-                    # Tester si on peut lire une frame à cette résolution
-                    ret, frame = self.camera.read()
-                    if ret and frame is not None and frame.shape[1] >= test_width * 0.9 and frame.shape[0] >= test_height * 0.9:
-                        best_resolution = (actual_width, actual_height, actual_fps, res_name)
-                        logger.info(f"[USB CAMERA] Résolution {res_name} ({actual_width}x{actual_height}@{actual_fps:.1f}fps) configurée avec succès")
-                        break
-                    else:
-                        logger.info(f"[USB CAMERA] Résolution {res_name} ({test_width}x{test_height}) non supportée")
-                
-                if not best_resolution:
-                    logger.info(f"[USB CAMERA] Backend {backend_name} : aucune résolution fonctionnelle trouvée")
-                    self.camera.release()
-                    continue
-                
-                # Vérification finale avec une deuxième lecture
-                ret, frame = self.camera.read()
-                if not ret or frame is None:
-                    logger.info(f"[USB CAMERA] Backend {backend_name} : la caméra {self.camera_id} ne retourne pas d'image de manière stable")
-                    self.camera.release()
-                    continue
-                
-                # Succès !
-                self.is_running = True
-                self.thread = threading.Thread(target=self._capture_loop)
-                self.thread.daemon = True
-                self.thread.start()
-                logger.info(f"[USB CAMERA] Caméra {self.camera_id} démarrée avec succès via backend {backend_name}")
-                return True
-                
-            except Exception as e:
-                logger.info(f"[USB CAMERA] Erreur avec backend {backend_name}: {e}")
-                if self.camera:
-                    self.camera.release()
-                continue
-        
-        # Aucun backend n'a fonctionné
-        self.error = f"Impossible d'ouvrir la caméra {self.camera_id} avec tous les backends testés"
-        logger.info(f"[USB CAMERA] Erreur: {self.error}")
-        return False
-    
-    def _reconnect(self):
-        """Tenter de reconnecter la caméra"""
-        logger.info(f"[USB CAMERA] Tentative de reconnexion de la caméra {self.camera_id}...")
-        if self.camera:
-            self.camera.release()
-        self.camera = None
-        time.sleep(1)  # Attendre un peu avant de réessayer
-        return self._initialize_camera()
-    
-    def _capture_loop(self):
-        """Boucle de capture des frames"""
-        consecutive_errors = 0
-        max_errors = 10  # Nombre maximum d'erreurs consécutives avant de tenter une reconnexion
-        
-        while self.is_running:
-            try:
-                if not self.camera or not self.camera.isOpened():
-                    # Tentative de reconnexion si la caméra est déconnectée
-                    logger.info(f"[USB CAMERA] Caméra {self.camera_id} déconnectée, tentative de reconnexion...")
-                    self._reconnect()
-                    time.sleep(1)  # Attendre avant de réessayer
-                    continue
-                    
-                ret, frame = self.camera.read()
-                if ret:
-                    # Convertir en JPEG pour le streaming MJPEG
-                    _, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
-                    with self.lock:
-                        self.frame = jpeg.tobytes()
-                    consecutive_errors = 0  # Réinitialiser le compteur d'erreurs
-                else:
-                    consecutive_errors += 1
-                    logger.info(f"[USB CAMERA] Erreur de lecture de frame (tentative {consecutive_errors}/{max_errors})")
-                    if consecutive_errors >= max_errors:
-                        logger.info(f"[USB CAMERA] Trop d'erreurs consécutives, tentative de reconnexion...")
-                        self._reconnect()
-                        consecutive_errors = 0
-                        
-                time.sleep(0.03)  # ~30 FPS
-            except Exception as e:
-                consecutive_errors += 1
-                logger.info(f"[USB CAMERA] Erreur de capture: {e} (tentative {consecutive_errors}/{max_errors})")
-                if consecutive_errors >= max_errors:
-                    logger.info(f"[USB CAMERA] Trop d'erreurs consécutives, tentative de reconnexion...")
-                    self._reconnect()
-                    consecutive_errors = 0
-                time.sleep(0.1)
-    
-    def get_frame(self):
-        """Récupérer la frame actuelle"""
-        with self.lock:
-            return self.frame
-    
-    def stop(self):
-        """Arrêter la caméra"""
-        self.is_running = False
-        if self.thread:
-            self.thread.join(timeout=1.0)
-        if self.camera:
-            self.camera.release()
-        logger.info(f"[USB CAMERA] Caméra {self.camera_id} arrêtée")
 
 # Variables globales
 config = load_config()
@@ -531,7 +177,7 @@ def capture_photo():
                 # Envoyer sur Telegram si activé
                 send_type = config.get('telegram_send_type', 'photos')
                 if send_type in ['photos', 'both']:
-                    threading.Thread(target=send_to_telegram, args=(filepath, "photo")).start()
+                    threading.Thread(target=send_to_telegram, args=(filepath, config, "photo")).start()
                 
                 return jsonify({'success': True, 'filename': filename})
             else:
@@ -750,7 +396,7 @@ async def apply_effect_async(photo_path):
                 # Envoyer sur Telegram si activé
                 send_type = config.get('telegram_send_type', 'photos')
                 if send_type in ['effet', 'both']:
-                    threading.Thread(target=send_to_telegram, args=(effect_path, "effet")).start()
+                    threading.Thread(target=send_to_telegram, args=(effect_path, config, "effet")).start()
                 
                 return jsonify({
                     'success': True, 
