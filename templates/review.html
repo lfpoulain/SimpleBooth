@@ -186,7 +186,7 @@ async function printPhoto() {
     overlay.style.display = 'flex';
     
     try {
-        const response = await fetch('/print_photo', {
+        const response = await fetch('/print_photo?filename={{photo}}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -269,7 +269,7 @@ async function confirmDeletePhoto() {
     modal.hide();
     
     try {
-        const response = await fetch('/delete_current', {
+        const response = await fetch('/delete_current?filename={{photo}}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -303,7 +303,7 @@ async function applyEffect() {
     overlay.style.display = 'flex';
     
     try {
-        const response = await fetch('/apply_effect', {
+        const response = await fetch('/apply_effect?filename={{photo}}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -325,7 +325,7 @@ async function applyEffect() {
             
             // Recharger la page après 2 secondes pour afficher la nouvelle image
             setTimeout(() => {
-                window.location.reload();
+                window.location.href = '/review?filename='+result.new_filename;
             }, 2000);
             
         } else {
