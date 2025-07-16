@@ -7,7 +7,7 @@
     <!-- Conteneur vidéo avec marges élégantes -->
     <div class="video-container position-relative d-flex align-items-center justify-content-center" id="videoContainer" style="height: calc(100vh - 2rem); width: calc(100vw - 2rem);">
         <img id="videoPreview" 
-             src="{{ url_for('video_stream') }}" 
+             src="{{ url_for('video_feed') }}" 
              style="max-width: calc(100vw - 2rem); max-height: calc(100vh - 2rem); width: auto; height: auto; object-fit: contain; background-color: #000; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);"
              alt="Flux vidéo caméra">
         
@@ -69,43 +69,7 @@
 <script>
 let isCapturing = false;
 
-// Initialiser la caméra au chargement de la page
-document.addEventListener('DOMContentLoaded', function() {
-    initCamera();
-});
 
-function initCamera() {
-    try {
-        console.log('Initialisation du flux vidéo caméra...');
-        
-        const videoPreview = document.getElementById('videoPreview');
-        
-        // Gérer les erreurs de chargement du flux
-        videoPreview.onerror = function() {
-            console.error('Erreur de chargement du flux vidéo');
-            showCameraError();
-        };
-        
-        // Gérer le chargement réussi
-        videoPreview.onload = function() {
-            console.log('Flux vidéo caméra démarré avec succès');
-        };
-        
-        // Démarrer le flux via l'API
-        fetch('/start_camera')
-            .then(response => response.json())
-            .then(data => {
-                console.log('Caméra initialisée:', data.status);
-            })
-            .catch(error => {
-                console.error('Erreur d\'initialisation caméra:', error);
-            });
-        
-    } catch (error) {
-        console.error('Erreur d\'accès à la caméra:', error);
-        showCameraError();
-    }
-}
 
 function showCameraError() {
     document.getElementById('videoContainer').innerHTML = 
@@ -167,7 +131,7 @@ async function takePicture() {
         
         if (result.success) {
             // Rediriger vers la page de révision
-            window.location.href = '/review';
+            window.location.href = '/review?filename='+result.filename;
         } else {
             throw new Error(result.error || 'Erreur de capture');
         }
@@ -357,11 +321,5 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(checkPrinterPaperStatus, 30000);
 });
 
-// Nettoyer les ressources lors de la fermeture
-window.addEventListener('beforeunload', function() {
-    fetch('/stop_camera').catch(error => {
-        console.log('Erreur arrêt caméra:', error);
-    });
-});
 </script>
 {% endblock %}

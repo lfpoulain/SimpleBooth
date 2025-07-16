@@ -77,104 +77,11 @@
                     <div class="row mt-4">
                         <div class="col-12">
                             <h4 class="mb-4"><i class="fas fa-video me-2 text-primary"></i>Configuration de la caméra</h4>
-                            
-                            <!-- Sélection du type de caméra avec cartes visuelles -->
-                            <div class="row g-3 mb-4">
-                                <!-- Pi Camera Card -->
-                                <div class="col-md-6">
-                                    <div class="card camera-option h-100 {{ 'border-primary bg-light' if config.camera_type == 'picamera' else 'border-secondary' }}" data-camera-type="picamera">
-                                        <div class="card-body text-center p-4">
-                                            <div class="mb-3">
-                                                <i class="fas fa-microchip fa-3x text-danger"></i>
-                                            </div>
-                                            <h5 class="card-title mb-2">Pi Camera</h5>
-                                            <p class="card-text text-muted mb-3">
-                                                Caméra officielle Raspberry Pi<br>
-                                                <small>Haute qualité, optimisée pour le Pi</small>
-                                            </p>
-                                            <div class="form-check d-flex justify-content-center">
-                                                <input class="form-check-input me-2" type="radio" name="camera_type" id="camera_type_picamera" value="picamera" {{ 'checked' if config.camera_type == 'picamera' else '' }}>
-                                                <label class="form-check-label fw-bold" for="camera_type_picamera">
-                                                    Sélectionner
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- USB Camera Card -->
-                                <div class="col-md-6">
-                                    <div class="card camera-option h-100 {{ 'border-primary bg-light' if config.camera_type == 'usb' else 'border-secondary' }}" data-camera-type="usb">
-                                        <div class="card-body text-center p-4">
-                                            <div class="mb-3">
-                                                <i class="fas fa-plug fa-3x text-success"></i>
-                                            </div>
-                                            <h5 class="card-title mb-2">Caméra USB</h5>
-                                            <p class="card-text text-muted mb-3">
-                                                Caméra USB externe<br>
-                                                <small>Compatible avec la plupart des webcams</small>
-                                            </p>
-                                            <div class="form-check d-flex justify-content-center">
-                                                <input class="form-check-input me-2" type="radio" name="camera_type" id="camera_type_usb" value="usb" {{ 'checked' if config.camera_type == 'usb' else '' }}>
-                                                <label class="form-check-label fw-bold" for="camera_type_usb">
-                                                    Sélectionner
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Configuration spécifique USB -->
-                            <div id="usb_camera_settings" class="{{ 'd-none' if config.camera_type != 'usb' else '' }}">
-                                <div class="card border-success">
-                                    <div class="card-header bg-success text-white">
-                                        <h6 class="mb-0"><i class="fas fa-cog me-2"></i>Configuration caméra USB</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        {% if available_cameras %}
-                                            <div class="mb-3">
-                                                <label for="usb_camera_select" class="form-label fw-bold">
-                                                    <i class="fas fa-list me-2 text-success"></i>Caméra détectée
-                                                </label>
-                                                <select class="form-select form-select-lg" id="usb_camera_select" name="usb_camera_select">
-                                                    {% for camera_id, camera_name in available_cameras %}
-                                                        <option value="{{ camera_id }}" {{ 'selected' if config.usb_camera_id == camera_id else '' }}>
-                                                            <i class="fas fa-camera me-2"></i>{{ camera_name }}
-                                                        </option>
-                                                    {% endfor %}
-                                                </select>
-                                                <div class="form-text mt-2">
-                                                    <i class="fas fa-info-circle me-1"></i>
-                                                    {{ available_cameras|length }} caméra(s) USB détectée(s) et fonctionnelle(s)
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="alert alert-success d-flex align-items-center">
-                                                <i class="fas fa-check-circle me-2"></i>
-                                                <div>
-                                                    <strong>Caméras détectées avec succès !</strong><br>
-                                                    <small>Sélectionnez la caméra que vous souhaitez utiliser dans la liste ci-dessus.</small>
-                                                </div>
-                                            </div>
-                                        {% else %}
-                                            <div class="alert alert-warning d-flex align-items-center">
-                                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                                <div>
-                                                    <strong>Aucune caméra USB détectée</strong><br>
-                                                    <small>Vérifiez que votre caméra est bien connectée et redémarrez l'application.</small>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="text-center mt-3">
-                                                <button type="button" class="btn btn-outline-warning" onclick="window.location.reload()">
-                                                    <i class="fas fa-sync-alt me-2"></i>Actualiser la détection
-                                                </button>
-                                            </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
+                            <select class="form-select select_camera" name="select_camera" id="select_camera">
+                                {% for i in range(nomber_cam) %}
+                                <option value={{i}} {% if CAMERA_USE==i %}selected{% endif %}>caméra {{i+1}}</option>
+                                {% endfor %}
+                            </select>
                         </div>
                     </div>
             </div>
@@ -877,56 +784,7 @@ function cancelDeleteAllPhotos() {
     document.getElementById('deleteConfirmModal').style.display = 'none';
 }
 
-// Gestion améliorée de l'affichage des options de caméra USB
-function toggleUsbCameraSettings() {
-    var cameraType = document.querySelector('input[name="camera_type"]:checked').value;
-    var usbSettings = document.getElementById('usb_camera_settings');
-    
-    // Mettre à jour l'apparence des cartes
-    updateCameraCardSelection();
-    
-    if (cameraType === 'usb') {
-        usbSettings.classList.remove('d-none');
-        usbSettings.classList.add('fade-in');
-    } else {
-        usbSettings.classList.add('d-none');
-        usbSettings.classList.remove('fade-in');
-    }
-}
 
-// Mettre à jour l'apparence des cartes de sélection
-function updateCameraCardSelection() {
-    var selectedType = document.querySelector('input[name="camera_type"]:checked').value;
-    var cards = document.querySelectorAll('.camera-option');
-    
-    cards.forEach(function(card) {
-        var cardType = card.getAttribute('data-camera-type');
-        if (cardType === selectedType) {
-            card.classList.add('selected', 'border-primary', 'bg-light');
-            card.classList.remove('border-secondary');
-        } else {
-            card.classList.remove('selected', 'border-primary', 'bg-light');
-            card.classList.add('border-secondary');
-        }
-    });
-}
-
-// Gestion des clics sur les cartes
-function setupCameraCardClicks() {
-    var cards = document.querySelectorAll('.camera-option');
-    
-    cards.forEach(function(card) {
-        card.addEventListener('click', function() {
-            var cameraType = this.getAttribute('data-camera-type');
-            var radioButton = document.getElementById('camera_type_' + cameraType);
-            
-            if (radioButton) {
-                radioButton.checked = true;
-                toggleUsbCameraSettings();
-            }
-        });
-    });
-}
 
 // Initialisation au chargement de la page
 document.addEventListener('DOMContentLoaded', function() {
@@ -939,27 +797,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Initialiser les gestionnaires d'événements pour les cartes de caméra
-    setupCameraCardClicks();
-    
-    // Mettre à jour l'affichage initial des cartes
-    updateCameraCardSelection();
-    
     // Afficher/masquer les paramètres USB selon la sélection initiale
     const selectedCameraType = document.querySelector('input[name="camera_type"]:checked');
     if (selectedCameraType) {
         toggleUsbCameraSettings(selectedCameraType.value);
     }
-    
-    // Événements pour les options de caméra
-    var cameraTypeRadios = document.querySelectorAll('input[name="camera_type"]');
-    cameraTypeRadios.forEach(function(radio) {
-        radio.addEventListener('change', function() {
-            toggleUsbCameraSettings(this.value);
-        });
-    });
-    updateCameraCardSelection();
-    toggleUsbCameraSettings();
     
     // Vérifier l'état de l'imprimante au chargement
     checkPrinterStatus();
@@ -1012,7 +854,8 @@ function savePrinterConfigAndRefresh() {
     const printerPort = document.getElementById('printer_port');
     const printerBaudrate = document.getElementById('printer_baudrate');
     const printResolution = document.getElementById('print_resolution');
-    
+    const select_camera = document.getElementById('select_camera');
+    console.log(select_camera)
     if (printerEnabled && printerEnabled.checked) {
         formData.append('printer_enabled', 'on');
     }
@@ -1025,7 +868,9 @@ function savePrinterConfigAndRefresh() {
     if (printResolution) {
         formData.append('print_resolution', printResolution.value);
     }
-    
+    if (select_camera) {
+        formData.append('select_camera', (select_camera.value));
+    }
     // Ajouter tous les autres champs du formulaire pour éviter de perdre la configuration
     const form = document.querySelector('form');
     const formElements = form.elements;

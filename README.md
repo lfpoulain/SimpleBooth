@@ -10,6 +10,8 @@
 ![OpenCV](https://img.shields.io/badge/OpenCV-Support%20USB-brightgreen.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
+Ce projet est un fork du projet  [lfpoulain/SimpleBooth](https://github.com/lfpoulain/SimpleBooth). Il modifie uniquement la gestion de la caméra pour utiliser cv2, afin de récupérer le flux vidéo. Je le trouve plus simple, car il ne différencie pas les caméras Raspberry Pi et USB.
+
 ## 🎯 Aperçu
 
 Cette application transforme votre Raspberry Pi en un photobooth professionnel avec :

@@ -6,7 +6,6 @@ PHOTOS_FOLDER = 'photos'
 EFFECT_FOLDER = 'effet'
 CONFIG_FILE = 'config.json'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-
 DEFAULT_CONFIG = {
     'footer_text': 'Photobooth',
     'timer_seconds': 3,
@@ -22,18 +21,15 @@ DEFAULT_CONFIG = {
     'telegram_bot_token': '',
     'telegram_chat_id': '',
     'telegram_send_type': 'photos',
-    'camera_type': 'picamera',
-    'usb_camera_id': 0,
     'printer_enabled': True,
     'printer_port': '/dev/ttyAMA0',
     'printer_baudrate': 9600,
-    'print_resolution': 384
+    'print_resolution': 384,
+    "num_came":0
 }
-
 logger = logging.getLogger(__name__)
 
-def ensure_directories():
-    """Create photos and effect folders if missing"""
+def verif_seting():
     logger.info(f"[DEBUG] Création du dossier photos: {PHOTOS_FOLDER}")
     os.makedirs(PHOTOS_FOLDER, exist_ok=True)
     logger.info(f"[DEBUG] Création du dossier effet: {EFFECT_FOLDER}")
@@ -41,6 +37,9 @@ def ensure_directories():
     logger.info(
         f"[DEBUG] Dossiers créés - Photos: {os.path.exists(PHOTOS_FOLDER)}, Effet: {os.path.exists(EFFECT_FOLDER)}"
     )
+    if not os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "w") as outfile:
+            json.dump(DEFAULT_CONFIG, outfile)
 
 def load_config():
     """Load configuration from JSON"""
