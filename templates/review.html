@@ -49,6 +49,36 @@
         font-size: 1.5rem;
         margin-bottom: 0.25rem;
     }
+    .image-grid {
+        display: grid;
+        height: 100%;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 10px;
+        padding: 10px;
+    }
+
+    .image-grid img {
+        width: 100%;
+        height: auto;
+        border-radius: 5px;
+    }
+            .image-container {
+            position: relative;
+            width: 100%;
+        }
+    .delete-button {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        border: none;
+        background:none;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+    }
 </style>
 
 <div class="review-container">
@@ -69,12 +99,15 @@
                     <span>Effet</span>
                 </button>
             </div>
+            {% endif %}
+            {% if config.printer_enabled %}
             <div class="col">
                 <button class="btn btn-success w-100 btn-review" onclick="printPhoto()">
                     <i class="fas fa-print"></i>
                     <span>Imprimer</span>
                 </button>
             </div>
+            {% endif %}
             <div class="col">
                 <a href="{{ url_for('index') }}" class="btn btn-primary w-100 btn-review">
                     <i class="fas fa-redo"></i>
@@ -87,25 +120,19 @@
                     <span>Supprimer</span>
                 </button>
             </div>
-            {% else %}
-            <div class="col-4">
-                <button class="btn btn-success w-100 btn-review" onclick="printPhoto()">
-                    <i class="fas fa-print"></i>
-                    <span>Imprimer</span>
-                </button>
-            </div>
-            <div class="col-4">
-                <a href="{{ url_for('index') }}" class="btn btn-primary w-100 btn-review">
-                    <i class="fas fa-redo"></i>
-                    <span>Reprendre</span>
-                </a>
-            </div>
-            <div class="col-4">
-                <button class="btn btn-danger w-100 btn-review" onclick="deletePhoto()">
+            {% if config.email_enabled %}
+                <div class="col">
+                    <button class="btn btn-success w-100 btn-review" onclick="send_email()">
+                        <i class="fas fa-envelope"></i>
+                        <span>Envoi par e-mail</span>
+                    </button>
+                </div>
+                <div class="col">
+                <button class="btn btn-danger w-100 btn-review" onclick="deletegroup()">
                     <i class="fas fa-trash"></i>
-                    <span>Supprimer</span>
+                    <span>Supprimer le groupe</span>
                 </button>
-            </div>
+                </div>
             {% endif %}
         </div>
     </div>
@@ -170,10 +197,107 @@
         </div>
     </div>
 </div>
+<!-- Modale de confirmation de suppression groupe-->
+<div class="modal fade" id="deletegroupeModal" tabindex="-1" aria-labelledby="deletegroupeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deletegroupeModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Supprimer le groupe
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="mb-3">
+                    <i class="fas fa-trash-alt text-danger" style="font-size: 3rem;"></i>
+                </div>
+                <h6 class="mb-3">Êtes-vous sûr de vouloir supprimer toutes les photos du groupe</h6>
+                <p class="text-muted mb-0">
+                    <small>Les photos ne pourront pas être envoyées</small>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>
+                    Annuler
+                </button>
+                <button type="button" class="btn btn-danger" onclick="deletegoupe()">
+                    <i class="fas fa-trash-alt me-2"></i>
+                    Supprimer le groupe
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+
+function createImageGrid(images) {
+    const gridDiv = document.createElement('div');
+    gridDiv.className = 'image-grid';
+
+    images.forEach((imageUrl, index) => {
+        const imageContainer = document.createElement('div');
+        imageContainer.className = 'image-container';
+        imageContainer.id = imageUrl;
+        const img = document.createElement('img');
+        img.src = "/photos/"+imageUrl;
+
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'delete-button';
+        deleteButton.innerHTML = '❌';
+        deleteButton.onclick = function() {
+            console.log(imageContainer.id)
+            window.localStorage.setItem("images",JSON.stringify(supprimerElement(JSON.parse(window.localStorage.getItem("images")),imageContainer.id)))
+            gridDiv.removeChild(imageContainer);
+            if (JSON.parse(window.localStorage.getItem("images")).length <= 1){
+                document.querySelector('.image-grid').remove();
+            }
+        };
+
+        imageContainer.appendChild(img);
+        imageContainer.appendChild(deleteButton);
+        gridDiv.appendChild(imageContainer);
+    });
+
+    return gridDiv;
+    }
+if ("{{config.email_enabled}}" == "True"){
+    if (window.localStorage.getItem("images") == null){
+        window.localStorage.setItem("images",JSON.stringify(["{{photo}}"]))
+    }else{
+        var photos =  JSON.parse(window.localStorage.getItem("images"));
+        if (photos.length != 0){
+            if (photos.includes("{{photo}}")){
+                var photos = supprimerElement(photos,"{{photo}}");
+            }
+            if (photos.length != 0){
+                const imageGrid = createImageGrid(photos);
+                document.querySelector('.photo-container').appendChild(imageGrid);
+            }
+        }
+        if (!photos.includes("{{photo}}")){
+            photos.push("{{photo}}");
+            window.localStorage.setItem("images",JSON.stringify(photos))
+        }
+    }
+}
+function supprimerElement(liste, element) {
+    const index = liste.indexOf(element);
+    if (index !== -1) {
+        liste.splice(index, 1);
+    }
+    return liste;
+}
+function deletegoupe(){
+  window.localStorage.removeItem("images");
+}
+function send_email(){
+    window.location.href = '/SendEmail';
+}
 async function printPhoto() {
     const printBtn = event.target;
     const originalContent = printBtn.innerHTML;
@@ -256,6 +380,11 @@ function closeOverlay() {
     overlay.classList.add('d-none');
     overlay.style.display = 'none';
 }
+function deletegroup() {
+    // Ouvrir la modale de confirmation
+    const modal = new bootstrap.Modal(document.getElementById('deletegroupeModal'));
+    modal.show();
+}
 
 function deletePhoto() {
     // Ouvrir la modale de confirmation
@@ -265,6 +394,7 @@ function deletePhoto() {
 
 async function confirmDeletePhoto() {
     // Fermer la modale
+    window.localStorage.setItem("images",JSON.stringify(supprimerElement(JSON.parse(window.localStorage.getItem("images")),"{{photo}}")))
     const modal = bootstrap.Modal.getInstance(document.getElementById('deletePhotoModal'));
     modal.hide();
     
@@ -290,7 +420,6 @@ async function confirmDeletePhoto() {
         alert('Erreur lors de la suppression: ' + error.message);
     }
 }
-
 async function applyEffect() {
     const effectBtn = event.target;
     const originalContent = effectBtn.innerHTML;

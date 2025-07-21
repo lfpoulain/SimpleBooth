@@ -1,3 +1,4 @@
+Ce projet est un fork du projet  [lfpoulain/SimpleBooth](https://github.com/lfpoulain/SimpleBooth). Il modifie uniquement la gestion de la caméra pour utiliser cv2 afin de récupérer le flux vidéo. Je le trouve plus simple, car il ne différencie pas les caméras Raspberry Pi et USB. j'ai aussi ajout l'envoi des photos par email.
 # 📸 Photobooth Raspberry Pi
 
 > **Application Flask pour photobooth tactile avec flux vidéo temps réel, capture instantanée, effets IA et intégration Telegram**
@@ -9,8 +10,6 @@
 ![Telegram](https://img.shields.io/badge/Telegram-Bot-blue.svg)
 ![OpenCV](https://img.shields.io/badge/OpenCV-Support%20USB-brightgreen.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
-
-Ce projet est un fork du projet  [lfpoulain/SimpleBooth](https://github.com/lfpoulain/SimpleBooth). Il modifie uniquement la gestion de la caméra pour utiliser cv2, afin de récupérer le flux vidéo. Je le trouve plus simple, car il ne différencie pas les caméras Raspberry Pi et USB.
 
 ## 🎯 Aperçu
 

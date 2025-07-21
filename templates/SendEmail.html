@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+
+{% block title %}Photobooth{% endblock %}
+
+{% block content %}
+<Style>
+      body{
+            --text_color : black;
+            --color-bg:linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+      /* Assurer que le conteneur principal remplit la hauteur de la fenêtre */
+    .review-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr 1fr;
+        grid-template-areas: 
+            "input_email div_email_add"
+            "input_email div_email_add"
+            "input_button input_button_send";
+        /* Hauteur de la fenêtre moins le padding du container-fluid de base.html */
+        height: calc(100vh - 40px);
+        padding: 1rem; /* Ajouter un peu d'espace */
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .input_email{
+      width: 80%;
+      height: 20%;
+      background-color:#667eea;
+      border: solid black 2px;
+      border-radius: 10px;
+      color: var(--text_color);
+      font-size: 1.5em;
+    }
+    .input_email::placeholder {
+      color: #28356f;
+      font-size: 1.5em;
+     }
+     .input_button{
+      width: 80%;
+      height: 50%;
+      background: var(--color-bg);
+      border: solid black 2px;
+      border-radius: 10px;
+      color: var(--text_color);
+      font-size: 1.5em;
+     }
+     .input_button_send{
+      width: 80%;
+      height: 50%;
+      background: var(--color-bg);
+      border: solid black 2px;
+      border-radius: 10px;
+      color: var(--text_color);
+      font-size: 1.5em;
+     }
+     .div_email_add{
+       width: 80%;
+       height: 80%;
+       background: var(--color-bg);
+       border-radius: 20px;
+       padding: 10px;
+       font-size: 1em;
+       color: var(--text_color);
+     }
+     .class_input_button_send,.class_div_email_add,.class_input_button,.class_input_email{
+      display: flex;
+      justify-content: center;
+      flex-direction: column;
+      align-items: center;
+     }
+     .class_div_email_add{
+      grid-area: div_email_add;
+     }
+     .class_input_button_send{
+      grid-area: input_button_send;
+     }
+     .class_input_button{
+      grid-area: input_button;
+     }
+     .class_input_email{
+      grid-area: input_email;
+     }
+     li{
+      position: relative;
+      padding: 1%;
+      width: 90%;
+      font-size: 1rem;
+      -moz-user-select: none; /* Firefox */
+      -webkit-user-select: none; /* Chrome, Safari, Opéra depuis la version 15 */
+      -ms-user-select: none; /* Internet Explorer depuis la version 10 et Edge */
+      user-select: none; /* Propriété standard */
+     }
+     .span_fin{
+      position: absolute;
+      left: 100%;
+     }
+     .di_message_err,.di_message_reu{
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%,-50%);
+      width: 50%;
+      height: 50%;
+      background-color: white;
+      border-radius: 20px;
+      border: solid black 3px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      display: none;
+     }
+     .button_div_err{
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      -moz-user-select: none; /* Firefox */
+      -webkit-user-select: none; /* Chrome, Safari, Opéra depuis la version 15 */
+      -ms-user-select: none; /* Internet Explorer depuis la version 10 et Edge */
+      user-select: none; /
+     }
+     .autocomplete-items{
+      width: 80%;
+      text-align: center;
+      background-color: rgb(102 126 234 / 80%);
+      border-radius:10px;
+      padding-bottom: 5px;
+     }
+     .word_div{
+      font-size:1.2em;
+      padding: 5px;
+      
+     }
+     </Style>
+<div class="review-container">
+      <div class="class_input_email">
+            <input type="email" placeholder='email' class="input_email">
+      </div>
+      <div class="class_input_button">
+            <input type="button" value='Ajouter email' class="input_button" onclick="add_email()">
+      </div>
+      <div class="class_div_email_add">
+            <div class="div_email_add">
+                  <h2>L’e-mail serait envoi à :</h2>
+                  <ol class="ol_email">
+                  </ol>
+            </div>
+      </div>
+      <div class="class_input_button_send">
+            <input type="button" value='envoi email' class="input_button_send" onclick="send_email()">      
+      </div>
+</div>
+<div class="di_message_err">
+      <div class="button_div_err">❌</div>
+      <h2 style="color: red;">Erreur dans l'envoi du message.</h2>
+      <p style="color: red;" class="texte-err">Il y a eu un problème dans l'envoi de e-mail.</p>
+</div>
+<div class="di_message_reu">
+      <h2 class="text_env">Envoi en cours...</h2>
+</div>
+<script>
+let destinatear =  []
+var input_email = document.querySelector(".input_email")
+function supprimerElement(liste, element) {
+    const index = liste.indexOf(element);
+    if (index !== -1) {
+        liste.splice(index, 1);
+    }
+    return liste;
+}
+function add_email(){
+      var valeur = input_email.value
+      destinatear.push(valeur)
+      var newDiv = document.createElement("li");
+      var fin_email = document.createElement("span");
+      fin_email.id =  valeur;
+      fin_email.classList.add("span_fin");
+      fin_email.innerText = "❌";
+      fin_email.addEventListener('click', function() {
+            document.querySelector(".ol_email").removeChild(newDiv);
+            supprimerElement(destinatear,this.id);
+      });
+      newDiv.classList.add(valeur);
+      newDiv.innerText = valeur;
+      newDiv.appendChild(fin_email);
+      input_email.value = "";
+      document.querySelector(".ol_email").appendChild(newDiv);
+}
+async function send_email(){
+      var images = window.localStorage.getItem("images");
+      var str_des = JSON.stringify(destinatear);
+
+      document.querySelector(".text_env").innerText = 'Envoi en cours...';
+      document.querySelector(".di_message_reu").style.display = "flex";
+      const response = await  fetch('/send_email?filenames='+images+'&desti='+str_des, {
+      })
+
+      const result = await response.json();
+        
+      if (result.success) {
+           document.querySelector(".text_env").innerText = "E-mail envoyé.";
+           window.localStorage.removeItem("images");
+           setTimeout(function () {window.location.href = '/';}, 2000);
+      }else{ 
+            document.querySelector(".texte-err").innerText = result.error;
+            document.querySelector(".di_message_err").style.display = "flex"
+            document.querySelector(".di_message_reu").style.display = "none";
+      }
+}
+document.querySelector(".button_div_err").addEventListener('click', function() {
+      document.querySelector(".di_message_err").style.display = "none"
+});
+emails = [{% for email in emails %}'{{email}}',{% endfor %}]
+if (emails.length <= 0){
+      autocomplete(document.querySelector(".input_email"), emails)
+      function autocomplete(inp, arr) {
+            /*the autocomplete function takes two arguments,
+            the text field element and an array of possible autocompleted values:*/
+            var currentFocus;
+            /*execute a function when someone writes in the text field:*/
+            inp.addEventListener("input", function(e) {
+            var a, b, i, val = this.value;
+            /*close any already open lists of autocompleted values*/
+            closeAllLists();
+            if (!val) { return false;}
+            currentFocus = -1;
+            /*create a DIV element that will contain the items (values):*/
+            a = document.createElement("DIV");
+            a.setAttribute("id", this.id + "autocomplete-list");
+            a.setAttribute("class", "autocomplete-items");
+            /*append the DIV element as a child of the autocomplete container:*/
+            this.parentNode.appendChild(a);
+            /*for each item in the array...*/
+            var holl_words = val.split(" ");
+            var las_word =  holl_words[holl_words.length -1];
+            var j = 0;
+            for (i = 0; i < arr.length && j < 5; i++) {
+                  /*check if the item starts with the same letters as the text field value:*/
+                  if (arr[i].substr(0, las_word.length).toUpperCase() == las_word.toUpperCase()) {
+                  j +=1;
+                  /*create a DIV element for each matching element:*/
+                  b = document.createElement("DIV");
+                  /*make the matching letters bold:*/
+                  b.innerHTML = "<strong>" + arr[i].substr(0, las_word.length) + "</strong>";
+                  b.innerHTML += arr[i].substr(las_word.length);
+                  /*insert a input field that will hold the current array item's value:*/
+                  b.innerHTML += "<input type='hidden' value='" + arr[i] + "'>";
+                  b.classList.add("word_div");
+                  /*execute a function when someone clicks on the item value (DIV element):*/
+                  b.addEventListener("click", function(e) {
+                        /*insert the value for the autocomplete text field:*/
+                        inp.value = inp.value.split(" ").slice(0,-1).join(" ") + " " + this.getElementsByTagName("input")[0].value;
+                        /*close the list of autocompleted values,
+                        (or any other open lists of autocompleted values:*/
+                        closeAllLists();
+                  });
+                  a.appendChild(b);
+                  }
+            }
+            });
+            /*execute a function presses a key on the keyboard:*/
+            inp.addEventListener("keydown", function(e) {
+            var x = document.getElementById(this.id + "autocomplete-list");
+            if (x) x = x.getElementsByTagName("div");
+            if (e.keyCode == 40) {
+                  /*If the arrow DOWN key is pressed,
+                  increase the currentFocus variable:*/
+                  currentFocus++;
+                  /*and and make the current item more visible:*/
+                  addActive(x);
+            } else if (e.keyCode == 38) { //up
+                  /*If the arrow UP key is pressed,
+                  decrease the currentFocus variable:*/
+                  currentFocus--;
+                  /*and and make the current item more visible:*/
+                  addActive(x);
+            } else if (e.keyCode == 13) {
+                  /*If the ENTER key is pressed, prevent the form from being submitted,*/
+                  e.preventDefault();
+                  if (currentFocus > -1) {
+                  /*and simulate a click on the "active" item:*/
+                  if (x) x[currentFocus].click();
+                  }
+            }
+            });
+            function addActive(x) {
+            /*a function to classify an item as "active":*/
+            if (!x) return false;
+            /*start by removing the "active" class on all items:*/
+            removeActive(x);
+            if (currentFocus >= x.length) currentFocus = 0;
+            if (currentFocus < 0) currentFocus = (x.length - 1);
+            /*add class "autocomplete-active":*/
+            x[currentFocus].classList.add("autocomplete-active");
+            }
+            function removeActive(x) {
+            /*a function to remove the "active" class from all autocomplete items:*/
+            for (var i = 0; i < x.length; i++) {
+            x[i].classList.remove("autocomplete-active");
+            }
+            }
+            function closeAllLists(elmnt) {
+            /*close all autocomplete lists in the document,
+            except the one passed as an argument:*/
+            var x = document.getElementsByClassName("autocomplete-items");
+            for (var i = 0; i < x.length; i++) {
+            if (elmnt != x[i] && elmnt != inp) {
+                  x[i].parentNode.removeChild(x[i]);
+            }
+            }
+            }
+            /*execute a function when someone clicks in the document:*/
+            document.addEventListener("click", function (e) {
+            closeAllLists(e.target);
+            });
+      }
+}
+</script>
+{% endblock %}

@@ -1,32 +1,34 @@
-from gc import get_objects
-
+import json
 from flask import Flask, Response,url_for,abort,redirect,send_from_directory,render_template,jsonify,request,flash
 import cv2
-import config_utils
 from runware import Runware, IImageInference
 import os
 import subprocess
 import logging
+import asyncio
 import threading
 import atexit
 import base64
 import sys
 from datetime import datetime
+from telegram_utils import send_to_telegram
 from config_utils import (
     PHOTOS_FOLDER,
     EFFECT_FOLDER,
     load_config,
     save_config,
     verif_seting,
-)
+    load_email,
+    save_email)
+from email_utils import envoyer_email_avec_images
 
 app = Flask(__name__)
-app.secret_key = '232'
+app.secret_key = os.environ.get('SECRET_KEY', 'photobooth_secret_key_2024')
 
 verif_seting()
-config = config_utils.load_config()
+config = load_config()
+emails = load_email()
 camera = cv2.VideoCapture(config["num_came"])
-
 
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 logger = logging.getLogger(__name__)
@@ -43,7 +45,6 @@ def generate_frames():
             frame = buffer.tobytes()
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-
 
 def check_printer_status():
     """Vérifier l'état de l'imprimante thermique"""
@@ -106,7 +107,6 @@ def check_printer_status():
             'paper_status': 'unknown'
         }
 
-
 # Fonction pour détecter les ports série disponibles
 def detect_serial_ports():
     """Détecte les ports série disponibles sur le système"""
@@ -146,9 +146,15 @@ def detect_serial_ports():
             available_ports = [('/dev/ttyAMA0', '/dev/ttyAMA0'), ('/dev/ttyS0', '/dev/ttyS0')]
 
     return available_ports
+
 @app.route('/')
 def index():
-    return render_template('index.html', time=config["timer_seconds"], timer=config["timer_seconds"])
+    return render_template('index.html',timer=config["timer_seconds"])
+
+@app.route('/SendEmail')
+def SendEmail():
+    global emails
+    return render_template('SendEmail.html',emails=emails)
 
 @app.route('/video_feed')
 def video_feed():
@@ -158,7 +164,7 @@ def video_feed():
 @app.route('/capture', methods=['POST'])
 def capture_photo():
     global camera
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S%MS')
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S%f')
     filename = f'photo_{timestamp}.jpg'
     filepath = os.path.join(PHOTOS_FOLDER, filename)
     success, frame = camera.read()
@@ -189,7 +195,6 @@ def serve_photo(filename):
         return send_from_directory(EFFECT_FOLDER, filename)
     else:
         abort(404)
-
 
 @app.route('/print_photo', methods=['POST', 'GET'])
 def print_photo():
@@ -253,7 +258,6 @@ def print_photo():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-
 @app.route('/delete_current', methods=['POST'])
 def delete_current_photo():
     """Supprimer la photo actuelle (depuis photos ou effet)"""
@@ -278,8 +282,7 @@ def delete_current_photo():
 
     return jsonify({'success': False, 'error': 'Aucune photo à supprimer'})
 
-
-@app.route('/apply_effect', methods=['POST'])
+@app.route('/apply_effect', methods=['POST','GET'])
 def apply_effect():
     """Appliquer un effet IA à la photo actuelle"""
     current_photo = request.args.get("filename")
@@ -306,7 +309,6 @@ def apply_effect():
     except Exception as e:
         logger.info(f"Erreur lors de l'application de l'effet: {e}")
         return jsonify({'success': False, 'error': f'Erreur IA: {str(e)}'})
-
 
 async def apply_effect_async(photo_path):
     """Fonction asynchrone pour appliquer l'effet IA"""
@@ -409,6 +411,45 @@ async def apply_effect_async(photo_path):
         logger.info(f"Erreur lors de l'application de l'effet: {e}")
         return jsonify({'success': False, 'error': f'Erreur IA: {str(e)}'})
 
+@app.route('/send_email', methods=['GET'])
+def send_email():
+    """Appliquer un effet IA à la photo actuelle"""
+    current_photo = request.args.get("filenames")
+    destinataires = request.args.get("desti")
+    if current_photo == 'null' or current_photo == '[]' or current_photo == None:
+        return jsonify({'success': False, 'error': 'Aucune photo à traiter'})
+
+    if not config.get('email_enabled', False):
+        return jsonify({'success': False, 'error': 'Les email sont désactivés'})
+    if destinataires == '[]':
+        return jsonify({'success': False, 'error': 'Aucune destinataire'})
+    try:
+        destinataires = json.loads(destinataires)
+        modi= False
+        for destinataire in destinataires:
+            if destinataire not in emails:
+                modi = True
+                emails.append(destinataire)
+        if modi:
+            save_email(emails)
+        images = json.loads(current_photo)
+        # Chemin de la photo actuelle
+        chemins_images = []
+        for image in images:
+            photo_path = os.path.join(PHOTOS_FOLDER, image)
+
+            if not os.path.exists(photo_path):
+                return jsonify({'success': False, 'error': 'Photo introuvable'})
+            chemins_images.append(photo_path)
+
+
+        re = envoyer_email_avec_images(config,destinataires,chemins_images)
+
+        return jsonify(re)
+
+    except Exception as e:
+        logger.info(f"Erreur lors de l'application de l'effet: {e}")
+        return jsonify({'success': False, 'error': f'Erreur IA: {str(e)}'})
 
 @app.route('/admin')
 def admin():
@@ -527,7 +568,16 @@ def save_admin_config():
         config['telegram_chat_id'] = request.form.get('telegram_chat_id', '')
         config['telegram_send_type'] = request.form.get('telegram_send_type', 'photos')
 
-        # Configuration de la caméra
+        # Configuration du email
+
+        if request.form.get('email_enabled', '') == "on":
+            config['email_enabled'] = True
+        else:
+            config['email_enabled'] = False
+        config['email'] = request.form.get('email_Address', '')
+        config['password_email'] = request.form.get('password_email', '')
+        config['sujet_email'] = request.form.get('sujet_email', '')
+        config['corps_email'] = request.form.get('corps_email', '')
 
 
         # Configuration de l'imprimante
@@ -675,8 +725,6 @@ def get_printer_status():
     """API pour vérifier l'état de l'imprimante"""
     return jsonify(check_printer_status())
 
-
-
 @atexit.register
 def cleanup():
     global camera
@@ -687,5 +735,6 @@ def signal_handler(sig, frame):
     global camera
     camera.release()
     exit(0)
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)

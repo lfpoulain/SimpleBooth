@@ -4,6 +4,11 @@
 
 {% block content %}
 <!-- Toast de confirmation -->
+ <style>
+    .band_email{
+        background-color: #08c391;
+    }
+ </style>
 <div class="toast-container position-fixed top-0 end-0 p-3">
     <div id="configSavedToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-show="{{ 'true' if show_toast else 'false' }}">
         <div class="toast-header bg-success text-white">
@@ -310,7 +315,105 @@
                 </div>
             </div>
         </div>
-        
+        <!-- Configuration email -->
+        <div class="card mb-4">
+            <div class="card-header band_email text-white" >
+                <h5 class="mb-0">
+                    <i class="fa fa-envelope me-2"></i>Configuration e-mail
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 ">
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="email_enabled" 
+                                       name="email_enabled"
+                                       {{ 'checked' if config.email_enabled else '' }}>
+                                <label class="form-check-label fw-bold" for="email_enabled">
+                                    Activer envoi e-mail
+                                </label>
+                            </div>
+                            <div class="form-text">Permet aux utilisateurs l’envoi de leurs photos par e-mail</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="email_server_smtp" class="form-label fw-bold">
+                                <i class="fas fa-paper-plane me-2 text-info"></i>server smtp
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="email_server_smtp" 
+                                   name="email_server_smtp" 
+                                   value="{{ config.smtp_server }}">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="email_Address" class="form-label fw-bold">
+                                <i class="fas fa-comments me-2 text-info"></i> Adresse e-mail
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="email_Address" 
+                                   name="email_Address" 
+                                   value="{{ config.email }}"
+                                   placeholder="e-mail">
+                            <div class="form-text">Adresse e-mail qui envoyer photos</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="password_email" class="form-label fw-bold">
+                                <i class="fas fa-key me-2 text-info"></i>Mot de passe
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="password_email" 
+                                   name="password_email" 
+                                   value="{{ config.password_email }}"
+                                   placeholder="mot de passe">
+                            <div class="form-text">Il faut générer un mot de passe <a href="https://myaccount.google.com/apppasswords?pli=1&rapt=AEjHL4MXEjK6FunarHBko4T3W3RuRsalPxDbtE2tsG509AnFB7k20duEQQ2LGAhjtXYcHi0BSus-9ITbDkAncYF3Tlupvi221dG5mDcpF5o3WIysc-43XR0">ici<a></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="sujet_email" class="form-label fw-bold">
+                                <i class="fas fa-comments me-2 text-info"></i> Sujet de l’e-mail
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="sujet_email" 
+                                   name="sujet_email" 
+                                   value="{{ config.sujet_email }}"
+                                   placeholder="Sujet de l’e-mail">
+                            <div class="form-text">Sujet de l’e-mail</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="corps_email" class="form-label fw-bold">
+                                <i class="fas fa-comments me-2 text-info"></i>Corps de l’e-mail
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="corps_email" 
+                                   name="corps_email" 
+                                   value="{{ config.corps_email }}"
+                                   placeholder="Corps de l’e-mail">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <!-- Configuration Imprimante -->
         <div class="card mb-4">
             <div class="card-header bg-secondary text-white">
@@ -854,8 +957,16 @@ function savePrinterConfigAndRefresh() {
     const printerPort = document.getElementById('printer_port');
     const printerBaudrate = document.getElementById('printer_baudrate');
     const printResolution = document.getElementById('print_resolution');
+    // Configuration email
+    const email_enabled = document.getElementById('email_enabled');
+    const email_server_smtp = document.getElementById('email_server_smtp');
+    const email_Address = document.getElementById('email_Address');
+    const password_email = document.getElementById('password_email');
+    const sujet_email = document.getElementById('sujet_email');
+    const corps_email = document.getElementById('corps_email');
+
     const select_camera = document.getElementById('select_camera');
-    console.log(select_camera)
+
     if (printerEnabled && printerEnabled.checked) {
         formData.append('printer_enabled', 'on');
     }
@@ -867,6 +978,24 @@ function savePrinterConfigAndRefresh() {
     }
     if (printResolution) {
         formData.append('print_resolution', printResolution.value);
+    }
+    if (email_server_smtp) {
+        formData.append('smtp_server', email_server_smtp.value);
+    }
+    if (email_enabled) {
+        formData.append('email_enabled', email_enabled.value);
+    }
+    if (email_Address) {
+        formData.append('email', email_Address.value);
+    }
+    if (password_email) {
+        formData.append('password_email', password_email.value);
+    }
+    if (sujet_email) {
+        formData.append('sujet_email', sujet_email.value);
+    }
+    if (corps_email) {
+        formData.append('corps_email', corps_email.value);
     }
     if (select_camera) {
         formData.append('select_camera', (select_camera.value));
