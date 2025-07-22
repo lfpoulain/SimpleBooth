@@ -11,6 +11,7 @@ import atexit
 import base64
 import sys
 from datetime import datetime
+import camera_utils
 from telegram_utils import send_to_telegram
 from config_utils import (
     PHOTOS_FOLDER,
@@ -28,7 +29,8 @@ app.secret_key = os.environ.get('SECRET_KEY', 'photobooth_secret_key_2024')
 verif_seting()
 config = load_config()
 emails = load_email()
-camera = cv2.VideoCapture(config["num_came"])
+
+camera = camera_utils.Camera(config["num_came"])
 
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 logger = logging.getLogger(__name__)
@@ -507,18 +509,7 @@ def admin():
 
 
     # Charger la configuration
-    camera.release()
-    nombe_cam = 0
-    while 1:
-        ddd = cv2.VideoCapture(nombe_cam)
-        if not ddd.isOpened():
-            break
-        else:
-            nombe_cam+=1
-            ddd.release()
-    ddd.release()
-    if nombe_cam == 0:
-        nombe_cam = 1
+    cameras = camera_utils.detect_cameras()
     camera = cv2.VideoCapture(config["num_came"])
 
     available_serial_ports = detect_serial_ports()
@@ -527,7 +518,7 @@ def admin():
                            photos=photos,
                            photo_count=photo_count,
                            effect_count=effect_count,
-                           nomber_cam =nombe_cam,
+                           nomber_cam =cameras,
                            CAMERA_USE=config["num_came"],
                            available_serial_ports=available_serial_ports,
                            show_toast=request.args.get('show_toast', False))

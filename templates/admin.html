@@ -83,8 +83,9 @@
                         <div class="col-12">
                             <h4 class="mb-4"><i class="fas fa-video me-2 text-primary"></i>Configuration de la caméra</h4>
                             <select class="form-select select_camera" name="select_camera" id="select_camera">
-                                {% for i in range(nomber_cam) %}
-                                <option value={{i}} {% if CAMERA_USE==i %}selected{% endif %}>caméra {{i+1}}</option>
+                                <option value="pi" {% if CAMERA_USE==i %}selected{% endif %}>pi caméra </option>
+                                {% for i, list in nomber_cam.items() %}
+                                <option value={{i}} {% if CAMERA_USE==i %}selected{% endif %}>caméra {{i+1}}: résolution de {{list[0]}}x{{list[2]}} </option>
                                 {% endfor %}
                             </select>
                         </div>
