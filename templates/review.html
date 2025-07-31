@@ -62,13 +62,15 @@
     }
 
     .action-buttons {
-        flex-grow: 1; /* Occupe l'espace restant */
+        flex-grow: 1;
         display: flex;
-        align-items: center; /* Centre verticalement */
-        justify-content: center; /* Centre horizontalement */
-        width: 780px;
-        margin: 0 auto;
-        padding: 0;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .action-buttons .row {
+        width: 100%;
     }
     
     /* Boutons améliorés pour 800x480 */
