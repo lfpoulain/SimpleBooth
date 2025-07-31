@@ -738,30 +738,43 @@ def generate_video_stream():
         # Utiliser la Pi Camera par défaut
         else:
             logger.info("[CAMERA] Démarrage de la Pi Camera...")
-            # Vérifier si libcamera-vid est disponible
-            libcamera_available = False
-            libcamera_path = 'libcamera-vid'
+            # Vérifier si rpicam-vid ou libcamera-vid est disponible
+            camera_available = False
+            camera_cmd = None
             
-            # D'abord essayer dans le PATH système
+            # D'abord essayer rpicam-vid (nouveau nom)
             try:
-                subprocess.run(['libcamera-vid', '--version'], capture_output=True, check=True, timeout=5)
-                libcamera_available = True
-                logger.info("[CAMERA] libcamera-vid trouvé dans le PATH")
+                subprocess.run(['rpicam-vid', '--version'], capture_output=True, check=True, timeout=5)
+                camera_available = True
+                camera_cmd = 'rpicam-vid'
+                logger.info("[CAMERA] rpicam-vid trouvé dans le PATH")
             except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
-                # Ensuite essayer des chemins spécifiques
-                for path in ['/usr/bin/libcamera-vid', '/usr/local/bin/libcamera-vid', '/opt/vc/bin/libcamera-vid']:
-                    try:
-                        subprocess.run([path, '--version'], capture_output=True, check=True, timeout=5)
-                        libcamera_available = True
-                        libcamera_path = path
-                        logger.info(f"[CAMERA] libcamera-vid trouvé à {path}")
-                        break
-                    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
-                        pass
+                # Ensuite essayer libcamera-vid (ancien nom)
+                try:
+                    subprocess.run(['libcamera-vid', '--version'], capture_output=True, check=True, timeout=5)
+                    camera_available = True
+                    camera_cmd = 'libcamera-vid'
+                    logger.info("[CAMERA] libcamera-vid trouvé dans le PATH")
+                except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+                    # Ensuite essayer des chemins spécifiques
+                    for cmd, paths in [('rpicam-vid', ['/usr/bin/rpicam-vid', '/usr/local/bin/rpicam-vid']),
+                                     ('libcamera-vid', ['/usr/bin/libcamera-vid', '/usr/local/bin/libcamera-vid', '/opt/vc/bin/libcamera-vid'])]:
+                        for path in paths:
+                            try:
+                                subprocess.run([path, '--version'], capture_output=True, check=True, timeout=5)
+                                camera_available = True
+                                camera_cmd = path
+                                logger.info(f"[CAMERA] {cmd} trouvé à {path}")
+                                break
+                            except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+                                pass
+                        if camera_available:
+                            break
             
-            if not libcamera_available:
-                logger.warning("[CAMERA] libcamera-vid non trouvé dans le système")
-                logger.info("[CAMERA] Vérifiez l'installation avec: sudo apt install libcamera-apps")
+            if not camera_available:
+                logger.warning("[CAMERA] rpicam-vid/libcamera-vid non trouvé dans le système")
+                logger.info("[CAMERA] Vérifiez l'installation avec: sudo apt install rpicam-apps")
+                logger.info("[CAMERA] Ou pour les anciennes versions: sudo apt install libcamera-apps")
                 logger.info("[CAMERA] Basculement vers caméra USB en fallback")
                 camera_type = 'usb'
                 camera_id = config.get('usb_camera_id', 0)
@@ -785,9 +798,9 @@ def generate_video_stream():
                     else:
                         time.sleep(0.03)  # Attendre si pas de frame disponible
             else:
-                # Commande libcamera-vid optimisée pour Pi 3 - résolution 16:9 pour écran 16:9
+                # Commande rpicam-vid/libcamera-vid optimisée pour Pi 3 - résolution 16:9 pour écran 16:9
                 cmd = [
-                    libcamera_path,
+                    camera_cmd,
                     '--codec', 'mjpeg',
                     '--width', '640',    # Résolution réduite pour Pi 3
                     '--height', '360',   # 16:9 adapté à votre écran 16:9
