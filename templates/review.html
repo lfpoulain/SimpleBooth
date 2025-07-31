@@ -69,12 +69,14 @@
                     <span>Effet</span>
                 </button>
             </div>
+            {% if config.printer_enabled %}
             <div class="col">
                 <button class="btn btn-success w-100 btn-review" onclick="printPhoto()">
                     <i class="fas fa-print"></i>
                     <span>Imprimer</span>
                 </button>
             </div>
+            {% endif %}
             <div class="col">
                 <a href="{{ url_for('index') }}" class="btn btn-primary w-100 btn-review">
                     <i class="fas fa-redo"></i>
@@ -88,12 +90,14 @@
                 </button>
             </div>
             {% else %}
+            {% if config.printer_enabled %}
             <div class="col-4">
                 <button class="btn btn-success w-100 btn-review" onclick="printPhoto()">
                     <i class="fas fa-print"></i>
                     <span>Imprimer</span>
                 </button>
             </div>
+            {% endif %}
             <div class="col-4">
                 <a href="{{ url_for('index') }}" class="btn btn-primary w-100 btn-review">
                     <i class="fas fa-redo"></i>
