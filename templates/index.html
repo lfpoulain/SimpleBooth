@@ -55,14 +55,13 @@
              style="background-color: white; z-index: 15; display: flex; align-items: center; justify-content: center;">
             <div style="font-size: 8rem; font-weight: bold; color: black; text-shadow: none;">CHEESE!</div>
         </div>
-    </div>
-
-    <!-- Pied de page avec bouton de capture -->
-    <div class="photobooth-footer">
+        <!-- Bouton capture en overlay -->
+        <div class="position-absolute bottom-0 start-50 translate-middle-x mb-4" style="z-index: 5;">
         <button id="captureBtn" class="btn btn-danger btn-lg px-5 py-3" onclick="capturePhoto()" 
                 style="font-size: 1.5rem; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
             <i class="fas fa-camera fa-2x"></i>
         </button>
+        </div>
     </div>
     
     <!-- Alerte manque de papier -->
