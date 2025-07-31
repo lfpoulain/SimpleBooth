@@ -3,7 +3,7 @@
 {% block title %}Photobooth{% endblock %}
 
 {% block content %}
-<div class="photobooth-container">
+<div class="photobooth-container" data-printer-enabled="{{ config.printer_enabled|tojson }}">
     <style>
     .photobooth-container {
         display: flex;
@@ -387,9 +387,14 @@ document.addEventListener('DOMContentLoaded', function() {
         window.history.replaceState({}, document.title, newUrl);
     }
     
-    checkPrinterPaperStatus();
-    // Vérifier toutes les 30 secondes
-    setInterval(checkPrinterPaperStatus, 30000);
+    const container = document.querySelector('.photobooth-container');
+    const printerEnabled = container.dataset.printerEnabled === 'true';
+
+    if (printerEnabled) {
+        checkPrinterPaperStatus();
+        // Vérifier toutes les 30 secondes
+        setInterval(checkPrinterPaperStatus, 30000);
+    }
 });
 
 // Nettoyer les ressources lors de la fermeture
