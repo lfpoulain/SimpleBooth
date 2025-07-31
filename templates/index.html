@@ -3,26 +3,38 @@
 {% block title %}Photobooth{% endblock %}
 
 {% block content %}
-<!-- Annuler les styles du template de base pour le plein écran -->
+<!-- FORCE RESOLUTION 800x480 - Annuler TOUT le template de base -->
 <style>
-    body {
+    * {
         margin: 0 !important;
         padding: 0 !important;
+        box-sizing: border-box !important;
+    }
+    html, body {
+        width: 800px !important;
+        height: 480px !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #1a1a1a !important;
     }
     .container-fluid {
+        width: 800px !important;
+        height: 480px !important;
         padding: 0 !important;
         margin: 0 !important;
+        overflow: hidden !important;
     }
 </style>
 
 <div class="photobooth-container" data-printer-enabled="{{ config.printer_enabled|tojson }}">
     <style>
     .photobooth-container {
-        position: fixed;
+        position: absolute;
         top: 0;
         left: 0;
-        width: 100vw;
-        height: 100vh;
+        width: 800px;
+        height: 480px;
         background-color: #1a1a1a;
         overflow: hidden;
         margin: 0;
@@ -32,51 +44,37 @@
         position: absolute;
         top: 0;
         left: 0;
-        width: 100%;
-        height: 100%;
+        width: 800px;
+        height: 480px;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 0;
+        margin: 0;
     }
     #videoPreview {
-        max-width: 100%;
-        max-height: 100%;
-        width: auto;
-        height: auto;
-        object-fit: contain;
+        width: 800px;
+        height: 480px;
+        object-fit: cover;
         background-color: #000;
-        border-radius: 15px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        border-radius: 0;
+        box-shadow: none;
     }
     .capture-button {
         position: absolute;
-        bottom: 20px;
-        left: 50%;
+        bottom: 30px;
+        left: 400px;
         transform: translateX(-50%);
         z-index: 10;
         background: rgba(220, 53, 69, 0.9);
         border: 3px solid white;
         border-radius: 50px;
-        padding: 15px 25px;
-        font-size: 1.2rem;
+        padding: 12px 20px;
+        font-size: 1.1rem;
         color: white;
         box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    }
-    
-    /* Media queries pour écrans plus grands */
-    @media (min-width: 900px) {
-        #videoPreview {
-            max-width: 90vw;
-            max-height: 90vh;
-            border-radius: 20px;
-        }
-        
-        .capture-button {
-            bottom: 40px;
-            padding: 20px 30px;
-            font-size: 1.5rem;
-        }
+        width: auto;
+        height: auto;
     }
     </style>
     <!-- Conteneur vidéo -->
@@ -139,38 +137,65 @@
 {% block scripts %}
 <script>
 let isCapturing = false;
+let cameraInitialized = false;
 
-// Initialiser la caméra au chargement de la page
+// Optimisation : Afficher l'interface immédiatement, initialiser la caméra en arrière-plan
 document.addEventListener('DOMContentLoaded', function() {
-    initCamera();
+    // Afficher un placeholder pendant l'initialisation
+    showCameraLoading();
+    
+    // Initialiser la caméra avec un délai pour permettre le rendu de la page
+    setTimeout(initCamera, 100);
 });
 
+function showCameraLoading() {
+    const videoPreview = document.getElementById('videoPreview');
+    // Créer un placeholder visuel pendant le chargement
+    videoPreview.style.background = 'linear-gradient(45deg, #333, #555)';
+    videoPreview.style.display = 'flex';
+    videoPreview.style.alignItems = 'center';
+    videoPreview.style.justifyContent = 'center';
+    videoPreview.innerHTML = '<div style="color: white; text-align: center; font-size: 1.2rem;"><i class="fas fa-camera fa-3x mb-3" style="opacity: 0.7;"></i><br>Initialisation de la caméra...</div>';
+}
+
 function initCamera() {
+    if (cameraInitialized) return;
+    
     try {
         console.log('Initialisation du flux vidéo caméra...');
         
         const videoPreview = document.getElementById('videoPreview');
         
-        // Gérer les erreurs de chargement du flux
-        videoPreview.onerror = function() {
-            console.error('Erreur de chargement du flux vidéo');
+        // Optimisation : Démarrer le flux immédiatement sans attendre la réponse
+        fetch('/start_camera', { 
+            method: 'GET',
+            cache: 'no-cache' // Éviter le cache pour les requêtes d'API
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Caméra initialisée:', data.status);
+            cameraInitialized = true;
+            
+            // Nettoyer le placeholder et configurer l'image
+            videoPreview.innerHTML = '';
+            videoPreview.style.background = '#000';
+            videoPreview.src = '/video_stream?t=' + Date.now(); // Cache-busting
+            
+            // Gérer les erreurs de chargement du flux
+            videoPreview.onerror = function() {
+                console.error('Erreur de chargement du flux vidéo');
+                showCameraError();
+            };
+            
+            // Gérer le chargement réussi
+            videoPreview.onload = function() {
+                console.log('Flux vidéo caméra démarré avec succès');
+            };
+        })
+        .catch(error => {
+            console.error('Erreur d\'initialisation caméra:', error);
             showCameraError();
-        };
-        
-        // Gérer le chargement réussi
-        videoPreview.onload = function() {
-            console.log('Flux vidéo caméra démarré avec succès');
-        };
-        
-        // Démarrer le flux via l'API
-        fetch('/start_camera')
-            .then(response => response.json())
-            .then(data => {
-                console.log('Caméra initialisée:', data.status);
-            })
-            .catch(error => {
-                console.error('Erreur d\'initialisation caméra:', error);
-            });
+        });
         
     } catch (error) {
         console.error('Erreur d\'accès à la caméra:', error);
@@ -268,10 +293,13 @@ let slideshowInterval = null;
 let inactivityTimer = null;
 let lastActivity = Date.now();
 
-// Initialiser le diaporama au chargement
+// Optimisation : Initialiser le diaporama en différé pour ne pas ralentir la caméra
 document.addEventListener('DOMContentLoaded', function() {
-    loadSlideshowConfig();
-    setupActivityTracking();
+    // Démarrer le diaporama après l'initialisation de la caméra
+    setTimeout(() => {
+        loadSlideshowConfig();
+        setupActivityTracking();
+    }, 2000); // 2 secondes de délai
 });
 
 async function loadSlideshowConfig() {
@@ -409,7 +437,7 @@ function checkPrinterPaperStatus() {
         });
 }
 
-// Vérifier le papier au chargement et périodiquement
+// Optimisation : Vérifier le papier en différé pour ne pas ralentir le chargement
 document.addEventListener('DOMContentLoaded', function() {
     // Vérifier si on doit forcer l'affichage de l'alerte papier
     const urlParams = new URLSearchParams(window.location.search);
@@ -423,14 +451,17 @@ document.addEventListener('DOMContentLoaded', function() {
         window.history.replaceState({}, document.title, newUrl);
     }
     
-    const container = document.querySelector('.photobooth-container');
-    const printerEnabled = container.dataset.printerEnabled === 'true';
+    // Démarrer la vérification de l'imprimante après l'initialisation de la caméra
+    setTimeout(() => {
+        const container = document.querySelector('.photobooth-container');
+        const printerEnabled = container.dataset.printerEnabled === 'true';
 
-    if (printerEnabled) {
-        checkPrinterPaperStatus();
-        // Vérifier toutes les 30 secondes
-        setInterval(checkPrinterPaperStatus, 30000);
-    }
+        if (printerEnabled) {
+            checkPrinterPaperStatus();
+            // Vérifier toutes les 30 secondes
+            setInterval(checkPrinterPaperStatus, 30000);
+        }
+    }, 3000); // 3 secondes de délai
 });
 
 // Nettoyer les ressources lors de la fermeture

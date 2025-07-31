@@ -3,82 +3,98 @@
 {% block title %}Photobooth - Révision{% endblock %}
 
 {% block content %}
-<!-- Annuler les styles du template de base pour le plein écran -->
+<!-- FORCE RESOLUTION 800x480 - Annuler TOUT le template de base -->
 <style>
-    body {
+    * {
         margin: 0 !important;
         padding: 0 !important;
+        box-sizing: border-box !important;
+    }
+    html, body {
+        width: 800px !important;
+        height: 480px !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #1a1a1a !important;
     }
     .container-fluid {
+        width: 800px !important;
+        height: 480px !important;
         padding: 0 !important;
         margin: 0 !important;
+        overflow: hidden !important;
     }
 </style>
 
 <style>
-    /* Optimisation pour petits écrans (800x480) */
+    /* RESOLUTION FIXE 800x480 */
     .review-container {
-        position: fixed;
+        position: absolute;
         top: 0;
         left: 0;
-        width: 100vw;
-        height: 100vh;
+        width: 800px;
+        height: 480px;
         display: flex;
         flex-direction: column;
-        padding: 0.5rem;
+        padding: 10px;
         margin: 0;
         background: #1a1a1a;
         overflow: hidden;
     }
 
     .photo-container {
-        flex-grow: 1;
+        width: 780px;
+        height: 350px;
         display: flex;
         justify-content: center;
         align-items: center;
         overflow: hidden;
-        margin-bottom: 0.5rem;
+        margin: 0 auto 10px auto;
     }
 
     .photo-preview-responsive {
-        max-width: 100%;
-        max-height: 100%;
+        max-width: 780px;
+        max-height: 350px;
         object-fit: contain;
-        border-radius: 10px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.5);
     }
 
     .action-buttons {
-        flex-shrink: 0;
+        width: 780px;
+        height: 100px;
+        margin: 0 auto;
         padding: 0;
     }
     
-    /* Boutons optimisés pour petit écran */
+    /* Boutons optimisés pour 800x480 */
     .btn-review {
-        height: 50px;
-        font-size: 0.9rem;
+        height: 40px;
+        font-size: 0.8rem;
         display: flex;
         flex-direction: row;
         align-items: center;
         justify-content: center;
         line-height: 1;
-        padding: 0.4rem;
-        margin-bottom: 0.3rem;
-        border-radius: 8px;
+        padding: 0.3rem 0.5rem;
+        margin-bottom: 0.2rem;
+        border-radius: 6px;
+        white-space: nowrap;
     }
     .btn-review i {
-        font-size: 1.2rem;
-        margin-right: 0.4rem;
+        font-size: 1rem;
+        margin-right: 0.3rem;
         margin-bottom: 0;
     }
     .btn-review span {
-        font-size: 0.85rem;
+        font-size: 0.75rem;
     }
     
-    /* Réduire l'espacement entre les boutons */
+    /* Espacement minimal pour 800x480 */
     .row.g-2 {
-        --bs-gutter-x: 0.25rem;
-        --bs-gutter-y: 0.25rem;
+        --bs-gutter-x: 0.2rem;
+        --bs-gutter-y: 0.2rem;
     }
     
     /* Media queries pour écrans plus grands */
