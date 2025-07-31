@@ -160,6 +160,7 @@
     
     <!-- Conteneur pour les boutons d'action -->
     <div class="action-buttons">
+        <div id="countdown-timer" style="color: #ccc; text-align: center; width: 100%; padding-bottom: 10px;"></div>
         <div class="row g-2 g-md-3 justify-content-center">
             {% if config.effect_enabled %}
             <div class="col">
@@ -277,10 +278,28 @@
 
 {% block scripts %}
 <script>
-    // Redirection automatique vers l'accueil après 10 secondes
-    setTimeout(function() {
-        window.location.href = "{{ url_for('index') }}";
-    }, 10000); // 10000 millisecondes = 10 secondes
+    // Compte à rebours pour la redirection automatique
+    document.addEventListener('DOMContentLoaded', function() {
+        let seconds = 10;
+        const countdownElement = document.getElementById('countdown-timer');
+
+        if (countdownElement) {
+            // Afficher le message initial
+            countdownElement.innerHTML = `Retour automatique dans <strong>${seconds}</strong>s...`;
+            seconds--;
+
+            const countdownInterval = setInterval(function() {
+                if (seconds >= 0) {
+                    countdownElement.innerHTML = `Retour automatique dans <strong>${seconds}</strong>s...`;
+                    seconds--;
+                } else {
+                    countdownElement.innerHTML = 'Redirection...';
+                    clearInterval(countdownInterval);
+                    window.location.href = "{{ url_for('index') }}";
+                }
+            }, 1000);
+        }
+    });
 
 
 async function printPhoto() {
