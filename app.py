@@ -147,7 +147,7 @@ usb_camera = None
 @app.route('/')
 def index():
     """Page principale avec aperçu vidéo"""
-    return render_template('index.html', timer=config['timer_seconds'])
+    return render_template('index.html', config=config, timer=config.get('timer_seconds'))
 
 # Variable globale pour stocker la dernière frame MJPEG
 last_frame = None
