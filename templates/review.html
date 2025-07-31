@@ -68,11 +68,6 @@
         justify-content: center; /* Centre verticalement */
         align-items: center; /* Centre horizontalement */
     }
-
-    .action-buttons .row {
-        width: 780px; /* Largeur fixe pour correspondre à la photo */
-        margin: 0 auto; /* Centrage horizontal */
-    }
     
     /* Boutons améliorés pour 800x480 */
     .btn-review {
@@ -164,7 +159,7 @@
     <!-- Conteneur pour les boutons d'action -->
     <div class="action-buttons">
         <div id="countdown-timer" style="color: #ccc; text-align: center; width: 100%; padding-bottom: 10px;"></div>
-        <div class="row g-2 g-md-3 justify-content-center">
+        <div class="row g-2 g-md-3 justify-content-center" style="width: 100%;">
             {% if config.effect_enabled %}
             <div class="col">
                 <button class="btn btn-warning w-100 btn-review" onclick="applyEffect()">
