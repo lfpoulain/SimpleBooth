@@ -50,6 +50,7 @@
         justify-content: center;
         align-items: center;
         overflow: hidden;
+        z-index: 1;
     }
 
     .photo-preview-responsive {
@@ -57,6 +58,7 @@
         height: 480px;
         object-fit: cover;
         border-radius: 0;
+        z-index: 1;
     }
 
     .action-buttons {
@@ -65,18 +67,20 @@
         left: 50%;
         transform: translateX(-50%);
         width: 760px;
-        z-index: 10;
-        background: rgba(0, 0, 0, 0.7);
+        z-index: 1000;
+        background: rgba(0, 0, 0, 0.9);
+        border: 2px solid rgba(255, 255, 255, 0.3);
         border-radius: 15px;
         padding: 15px;
         backdrop-filter: blur(10px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.8);
     }
     
     /* Boutons optimisés pour overlay 800x480 */
     .btn-review {
         height: 45px;
         font-size: 0.9rem;
-        font-weight: 600;
+        font-weight: 700;
         display: flex;
         flex-direction: row;
         align-items: center;
@@ -86,14 +90,18 @@
         margin-bottom: 0;
         border-radius: 8px;
         white-space: nowrap;
-        border: 2px solid rgba(255,255,255,0.2);
+        border: 2px solid rgba(255,255,255,0.5) !important;
         backdrop-filter: blur(5px);
         transition: all 0.2s ease;
+        color: white !important;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        box-shadow: 0 2px 10px rgba(0,0,0,0.5);
     }
     .btn-review:hover {
         transform: scale(1.05);
-        border-color: rgba(255,255,255,0.4);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        border-color: rgba(255,255,255,0.8) !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+        color: white !important;
     }
     .btn-review i {
         font-size: 1.1rem;
@@ -469,6 +477,64 @@ function closeEffectOverlay() {
     overlay.classList.add('d-none');
     overlay.style.display = 'none';
 }
+
+// Timer automatique de retour à l'index après 10 secondes
+let autoReturnTimer;
+let countdownDisplay;
+
+function startAutoReturn() {
+    let timeLeft = 10;
+    
+    // Créer l'affichage du countdown
+    countdownDisplay = document.createElement('div');
+    countdownDisplay.id = 'autoReturnCountdown';
+    countdownDisplay.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 10px 15px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        z-index: 2000;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+    `;
+    countdownDisplay.innerHTML = `<i class="fas fa-clock me-2"></i>Retour automatique dans ${timeLeft}s`;
+    document.body.appendChild(countdownDisplay);
+    
+    // Démarrer le timer
+    autoReturnTimer = setInterval(() => {
+        timeLeft--;
+        countdownDisplay.innerHTML = `<i class="fas fa-clock me-2"></i>Retour automatique dans ${timeLeft}s`;
+        
+        if (timeLeft <= 0) {
+            clearInterval(autoReturnTimer);
+            window.location.href = '/';
+        }
+    }, 1000);
+}
+
+function cancelAutoReturn() {
+    if (autoReturnTimer) {
+        clearInterval(autoReturnTimer);
+        autoReturnTimer = null;
+    }
+    if (countdownDisplay) {
+        countdownDisplay.remove();
+        countdownDisplay = null;
+    }
+}
+
+// Démarrer le timer automatique au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    startAutoReturn();
+    
+    // Annuler le timer si l'utilisateur interagit avec la page
+    document.addEventListener('click', cancelAutoReturn);
+    document.addEventListener('keydown', cancelAutoReturn);
+    document.addEventListener('touchstart', cancelAutoReturn);
+});
 
 
 </script>
