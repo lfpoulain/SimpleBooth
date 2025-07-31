@@ -68,6 +68,54 @@
         --bs-gutter-x: 0.25rem;
         --bs-gutter-y: 0.25rem;
     }
+    
+    /* Media queries pour écrans plus grands */
+    @media (min-width: 900px) {
+        .review-container {
+            position: relative;
+            width: auto;
+            height: calc(100vh - 40px);
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 2rem;
+            background: rgba(255,255,255,0.95);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .photo-container {
+            margin-bottom: 2rem;
+        }
+        
+        .photo-preview-responsive {
+            border-radius: 15px;
+            max-width: 80vw;
+            max-height: 70vh;
+        }
+        
+        .btn-review {
+            height: 70px;
+            font-size: 1.1rem;
+            flex-direction: column;
+            padding: 0.75rem;
+            margin-bottom: 0;
+        }
+        
+        .btn-review i {
+            font-size: 1.5rem;
+            margin-right: 0;
+            margin-bottom: 0.5rem;
+        }
+        
+        .btn-review span {
+            font-size: 1rem;
+        }
+        
+        .row.g-2 {
+            --bs-gutter-x: 1rem;
+            --bs-gutter-y: 1rem;
+        }
+    }
 </style>
 
 <div class="review-container">
