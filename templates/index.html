@@ -3,6 +3,18 @@
 {% block title %}Photobooth{% endblock %}
 
 {% block content %}
+<!-- Annuler les styles du template de base pour le plein écran -->
+<style>
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    .container-fluid {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+</style>
+
 <div class="photobooth-container" data-printer-enabled="{{ config.printer_enabled|tojson }}">
     <style>
     .photobooth-container {
