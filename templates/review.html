@@ -28,73 +28,86 @@
 </style>
 
 <style>
-    /* RESOLUTION FIXE 800x480 */
+    /* RESOLUTION FIXE 800x480 - PHOTO FULL SCREEN */
     .review-container {
         position: absolute;
         top: 0;
         left: 0;
         width: 800px;
         height: 480px;
-        display: flex;
-        flex-direction: column;
-        padding: 10px;
         margin: 0;
         background: #1a1a1a;
         overflow: hidden;
     }
 
     .photo-container {
-        width: 780px;
-        height: 350px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 800px;
+        height: 480px;
         display: flex;
         justify-content: center;
         align-items: center;
         overflow: hidden;
-        margin: 15px auto 10px auto;
     }
 
     .photo-preview-responsive {
-        max-width: 780px;
-        max-height: 350px;
-        object-fit: contain;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        width: 800px;
+        height: 480px;
+        object-fit: cover;
+        border-radius: 0;
     }
 
     .action-buttons {
-        width: 780px;
-        height: 100px;
-        margin: 0 auto;
-        padding: 0;
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 760px;
+        z-index: 10;
+        background: rgba(0, 0, 0, 0.7);
+        border-radius: 15px;
+        padding: 15px;
+        backdrop-filter: blur(10px);
     }
     
-    /* Boutons optimisés pour 800x480 */
+    /* Boutons optimisés pour overlay 800x480 */
     .btn-review {
-        height: 40px;
-        font-size: 0.8rem;
+        height: 45px;
+        font-size: 0.9rem;
+        font-weight: 600;
         display: flex;
         flex-direction: row;
         align-items: center;
         justify-content: center;
         line-height: 1;
-        padding: 0.3rem 0.5rem;
-        margin-bottom: 0.2rem;
-        border-radius: 6px;
+        padding: 0.4rem 0.8rem;
+        margin-bottom: 0;
+        border-radius: 8px;
         white-space: nowrap;
+        border: 2px solid rgba(255,255,255,0.2);
+        backdrop-filter: blur(5px);
+        transition: all 0.2s ease;
+    }
+    .btn-review:hover {
+        transform: scale(1.05);
+        border-color: rgba(255,255,255,0.4);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     }
     .btn-review i {
-        font-size: 1rem;
-        margin-right: 0.3rem;
+        font-size: 1.1rem;
+        margin-right: 0.4rem;
         margin-bottom: 0;
     }
     .btn-review span {
-        font-size: 0.75rem;
+        font-size: 0.85rem;
     }
     
-    /* Espacement minimal pour 800x480 */
+    /* Espacement pour overlay */
     .row.g-2 {
-        --bs-gutter-x: 0.2rem;
-        --bs-gutter-y: 0.2rem;
+        --bs-gutter-x: 0.4rem;
+        --bs-gutter-y: 0;
     }
     
     /* Media queries pour écrans plus grands */
