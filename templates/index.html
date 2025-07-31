@@ -3,28 +3,45 @@
 {% block title %}Photobooth{% endblock %}
 
 {% block content %}
-<div class="container-fluid p-3" style="height: 100vh; overflow: hidden; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: #1a1a1a;">
+<div class="photobooth-container">
     <style>
-    /* Ajustements spécifiques pour les petits écrans 800x480 */
-    @media (max-width: 800px) and (max-height: 480px) {
-        #videoContainer {
-            height: calc(100vh - 1rem);
-            width: calc(100vw - 1rem);
-        }
-
-        #videoPreview {
-            max-width: calc(100vw - 1rem);
-            max-height: calc(100vh - 1rem);
-        }
-
-        #captureBtn {
-            font-size: 1.2rem;
-            padding: 8px 16px;
-        }
+    .photobooth-container {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        width: 100vw;
+        background-color: #1a1a1a;
+        overflow: hidden;
+        position: fixed; 
+        top: 0; 
+        left: 0;
+    }
+    .photobooth-body {
+        flex-grow: 1;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+    .photobooth-footer {
+        flex-shrink: 0;
+        padding: 1rem;
+        text-align: center;
+    }
+    #videoPreview {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        background-color: #000;
+        border-radius: 15px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
     }
     </style>
-    <!-- Conteneur vidéo avec marges élégantes -->
-    <div class="video-container position-relative d-flex align-items-center justify-content-center" id="videoContainer" style="height: calc(100vh - 2rem); width: calc(100vw - 2rem);">
+    <!-- Conteneur vidéo -->
+    <div class="photobooth-body">
         <img id="videoPreview" 
              src="{{ url_for('video_stream') }}" 
              style="max-width: calc(100vw - 2rem); max-height: calc(100vh - 2rem); width: auto; height: auto; object-fit: contain; background-color: #000; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);"
@@ -38,14 +55,14 @@
              style="background-color: white; z-index: 15; display: flex; align-items: center; justify-content: center;">
             <div style="font-size: 8rem; font-weight: bold; color: black; text-shadow: none;">CHEESE!</div>
         </div>
-        
-        <!-- Bouton capture en overlay -->
-        <div class="position-absolute bottom-0 start-50 translate-middle-x mb-4" style="z-index: 5;">
-            <button id="captureBtn" class="btn btn-danger btn-lg px-5 py-3" onclick="capturePhoto()" 
-                    style="font-size: 1.5rem; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-                <i class="fas fa-camera fa-2x"></i>
-            </button>
-        </div>
+    </div>
+
+    <!-- Pied de page avec bouton de capture -->
+    <div class="photobooth-footer">
+        <button id="captureBtn" class="btn btn-danger btn-lg px-5 py-3" onclick="capturePhoto()" 
+                style="font-size: 1.5rem; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+            <i class="fas fa-camera fa-2x"></i>
+        </button>
     </div>
     
     <!-- Alerte manque de papier -->
