@@ -738,72 +738,107 @@ def generate_video_stream():
         # Utiliser la Pi Camera par défaut
         else:
             logger.info("[CAMERA] Démarrage de la Pi Camera...")
-            # Commande libcamera-vid optimisée pour Pi 3 - résolution 16:9 pour écran 16:9
-            cmd = [
-                'libcamera-vid',
-                '--codec', 'mjpeg',
-                '--width', '640',    # Résolution réduite pour Pi 3
-                '--height', '360',   # 16:9 adapté à votre écran 16:9
-                '--framerate', '20', # Framerate plus élevé avec résolution réduite
-                '--timeout', '0',    # Durée infinie
-                '--output', '-',     # Sortie vers stdout
-                '--inline',          # Headers inline
-                '--flush',           # Flush immédiat
-                '--nopreview',       # Pas d'aperçu local
-                '--quality', '70',   # Qualité JPEG réduite pour moins de données
-                '--denoise', 'off',  # Désactiver le débruitage pour économiser du CPU
-                '--awb', 'auto',     # Balance des blancs automatique simple
-                '--metering', 'centre' # Mesure d'exposition centrée, plus rapide
-            ]
-            
-            camera_process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                bufsize=0
-            )
-            
-            # Buffer pour assembler les frames JPEG
-            buffer = b''
-            
-            while camera_process and camera_process.poll() is None:
+            # Vérifier si libcamera-vid est disponible
+            libcamera_available = False
+            for path in ['/usr/bin/libcamera-vid', '/usr/local/bin/libcamera-vid']:
                 try:
-                    # Lire les données par petits blocs
-                    chunk = camera_process.stdout.read(1024)
-                    if not chunk:
-                        break
-                        
-                    buffer += chunk
-                    
-                    # Chercher les marqueurs JPEG
-                    while True:
-                        # Chercher le début d'une frame JPEG (0xFFD8)
-                        start = buffer.find(b'\xff\xd8')
-                        if start == -1:
-                            break
-                            
-                        # Chercher la fin de la frame JPEG (0xFFD9)
-                        end = buffer.find(b'\xff\xd9', start + 2)
-                        if end == -1:
-                            break
-                            
-                        # Extraire la frame complète
-                        jpeg_frame = buffer[start:end + 2]
-                        buffer = buffer[end + 2:]
-                        
+                    subprocess.run([path, '--version'], capture_output=True, check=True, timeout=5)
+                    libcamera_available = True
+                    libcamera_path = path
+                    break
+                except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+                    pass
+            
+            if not libcamera_available:
+                logger.info("[INFO] libcamera-vid non disponible, basculement vers caméra USB")
+                camera_type = 'usb'
+                camera_id = config.get('usb_camera_id', 0)
+                usb_camera = UsbCamera(camera_id=camera_id)
+                if not usb_camera.start():
+                    raise Exception(f"Impossible de démarrer la caméra USB avec ID {camera_id}")
+                
+                # Générateur de frames pour la caméra USB
+                while True:
+                    frame = usb_camera.get_frame()
+                    if frame:
                         # Stocker la frame pour capture instantanée
                         with frame_lock:
-                            last_frame = jpeg_frame
+                            last_frame = frame
                         
                         # Envoyer la frame au navigateur
                         yield (b'--frame\r\n'
                                b'Content-Type: image/jpeg\r\n'
-                               b'Content-Length: ' + str(len(jpeg_frame)).encode() + b'\r\n\r\n' +
-                               jpeg_frame + b'\r\n')
+                               b'Content-Length: ' + str(len(frame)).encode() + b'\r\n\r\n' +
+                               frame + b'\r\n')
+                    else:
+                        time.sleep(0.03)  # Attendre si pas de frame disponible
+            else:
+                # Commande libcamera-vid optimisée pour Pi 3 - résolution 16:9 pour écran 16:9
+                cmd = [
+                    libcamera_path,
+                    '--codec', 'mjpeg',
+                    '--width', '640',    # Résolution réduite pour Pi 3
+                    '--height', '360',   # 16:9 adapté à votre écran 16:9
+                    '--framerate', '20', # Framerate plus élevé avec résolution réduite
+                    '--timeout', '0',    # Durée infinie
+                    '--output', '-',     # Sortie vers stdout
+                    '--inline',          # Headers inline
+                    '--flush',           # Flush immédiat
+                    '--nopreview',       # Pas d'aperçu local
+                    '--quality', '70',   # Qualité JPEG réduite pour moins de données
+                    '--denoise', 'off',  # Désactiver le débruitage pour économiser du CPU
+                    '--awb', 'auto',     # Balance des blancs automatique simple
+                    '--metering', 'centre' # Mesure d'exposition centrée, plus rapide
+                ]
+                
+                camera_process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    bufsize=0
+                )
+                
+                # Buffer pour assembler les frames JPEG
+                buffer = b''
+                
+                while camera_process and camera_process.poll() is None:
+                    try:
+                        # Lire les données par petits blocs
+                        chunk = camera_process.stdout.read(1024)
+                        if not chunk:
+                            break
+                        
+                        buffer += chunk
+                        
+                        # Chercher les marqueurs JPEG
+                        while True:
+                            # Chercher le début d'une frame JPEG (0xFFD8)
+                            start = buffer.find(b'\xff\xd8')
+                            if start == -1:
+                                break
+                                
+                            # Chercher la fin de la frame JPEG (0xFFD9)
+                            end = buffer.find(b'\xff\xd9', start + 2)
+                            if end == -1:
+                                break
+                                
+                            # Extraire la frame complète
+                            jpeg_frame = buffer[start:end + 2]
+                            buffer = buffer[end + 2:]
+                            
+                            # Stocker la frame pour capture instantanée
+                            with frame_lock:
+                                last_frame = jpeg_frame
+                            
+                            # Envoyer la frame au navigateur
+                            yield (b'--frame\r\n'
+                                   b'Content-Type: image/jpeg\r\n'
+                                   b'Content-Length: ' + str(len(jpeg_frame)).encode() + b'\r\n\r\n' +
+                                   jpeg_frame + b'\r\n')
                                
-                except Exception as e:
-                    logger.info(f"[CAMERA] Erreur lecture flux: {e}")
-                    break
+                    except Exception as e:
+                        logger.info(f"[CAMERA] Erreur lecture flux: {e}")
+                        break
                 
     except Exception as e:
         logger.info(f"Erreur flux vidéo: {e}")
