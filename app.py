@@ -727,18 +727,22 @@ def generate_video_stream():
         # Utiliser la Pi Camera par défaut
         else:
             logger.info("[CAMERA] Démarrage de la Pi Camera...")
-            # Commande libcamera-vid pour flux MJPEG - résolution 16/9
+            # Commande libcamera-vid optimisée pour Pi 3 - résolution réduite pour plus de fluidité
             cmd = [
                 'libcamera-vid',
                 '--codec', 'mjpeg',
-                '--width', '1280',   # Résolution native plus compatible
-                '--height', '720',   # Vrai 16/9 sans bandes noires
-                '--framerate', '15', # Framerate plus élevé pour cette résolution
+                '--width', '640',    # Résolution réduite pour Pi 3
+                '--height', '480',   # 4:3 adapté à votre écran 800x480
+                '--framerate', '20', # Framerate plus élevé avec résolution réduite
                 '--timeout', '0',    # Durée infinie
                 '--output', '-',     # Sortie vers stdout
                 '--inline',          # Headers inline
                 '--flush',           # Flush immédiat
-                '--nopreview'        # Pas d'aperçu local
+                '--nopreview',       # Pas d'aperçu local
+                '--quality', '70',   # Qualité JPEG réduite pour moins de données
+                '--denoise', 'off',  # Désactiver le débruitage pour économiser du CPU
+                '--awb', 'auto',     # Balance des blancs automatique simple
+                '--metering', 'centre' # Mesure d'exposition centrée, plus rapide
             ]
             
             camera_process = subprocess.Popen(
