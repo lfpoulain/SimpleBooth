@@ -14,15 +14,7 @@ import atexit
 import base64
 import sys
 from datetime import datetime
-# Import optionnel pour les effets IA
-try:
-    from runware import Runware, IImageInference
-    RUNWARE_AVAILABLE = True
-except ImportError:
-    print("[INFO] Module runware non disponible - les effets IA seront désactivés")
-    Runware = None
-    IImageInference = None
-    RUNWARE_AVAILABLE = False
+from runware import Runware, IImageInference
 from config_utils import (
     PHOTOS_FOLDER,
     EFFECT_FOLDER,
@@ -301,9 +293,6 @@ def apply_effect():
     
     if not config.get('effect_enabled', False):
         return jsonify({'success': False, 'error': 'Les effets sont désactivés'})
-    
-    if not RUNWARE_AVAILABLE:
-        return jsonify({'success': False, 'error': 'Module runware non installé - les effets IA ne sont pas disponibles'})
     
     if not config.get('runware_api_key'):
         return jsonify({'success': False, 'error': 'Clé API Runware manquante'})
@@ -737,133 +726,73 @@ def generate_video_stream():
         
         # Utiliser la Pi Camera par défaut
         else:
-            logger.info("[CAMERA] Démarrage de la Pi Camera...")
-            # Vérifier si rpicam-vid ou libcamera-vid est disponible
-            camera_available = False
-            camera_cmd = None
+            logger.info("[CAMERA] Démarrage de la Pi Camera avec rpicam-vid...")
+            # Commande rpicam-vid optimisée pour Pi 3 - résolution 16:9 pour écran 16:9
+            cmd = [
+                'rpicam-vid',
+                '--codec', 'mjpeg',
+                '--width', '640',    # Résolution réduite pour Pi 3
+                '--height', '360',   # 16:9 adapté à votre écran 16:9
+                '--framerate', '20', # Framerate plus élevé avec résolution réduite
+                '--timeout', '0',    # Durée infinie
+                '--output', '-',     # Sortie vers stdout
+                '--inline',          # Headers inline
+                '--flush',           # Flush immédiat
+                '--nopreview',       # Pas d'aperçu local
+                '--quality', '70',   # Qualité JPEG réduite pour moins de données
+                '--denoise', 'off',  # Désactiver le débruitage pour économiser du CPU
+                '--awb', 'auto',     # Balance des blancs automatique simple
+                '--metering', 'centre' # Mesure d'exposition centrée, plus rapide
+            ]
             
-            # D'abord essayer rpicam-vid (nouveau nom)
-            try:
-                subprocess.run(['rpicam-vid', '--version'], capture_output=True, check=True, timeout=5)
-                camera_available = True
-                camera_cmd = 'rpicam-vid'
-                logger.info("[CAMERA] rpicam-vid trouvé dans le PATH")
-            except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
-                # Ensuite essayer libcamera-vid (ancien nom)
+            camera_process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                bufsize=0
+            )
+            
+            # Buffer pour assembler les frames JPEG
+            buffer = b''
+            
+            while camera_process and camera_process.poll() is None:
                 try:
-                    subprocess.run(['libcamera-vid', '--version'], capture_output=True, check=True, timeout=5)
-                    camera_available = True
-                    camera_cmd = 'libcamera-vid'
-                    logger.info("[CAMERA] libcamera-vid trouvé dans le PATH")
-                except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
-                    # Ensuite essayer des chemins spécifiques
-                    for cmd, paths in [('rpicam-vid', ['/usr/bin/rpicam-vid', '/usr/local/bin/rpicam-vid']),
-                                     ('libcamera-vid', ['/usr/bin/libcamera-vid', '/usr/local/bin/libcamera-vid', '/opt/vc/bin/libcamera-vid'])]:
-                        for path in paths:
-                            try:
-                                subprocess.run([path, '--version'], capture_output=True, check=True, timeout=5)
-                                camera_available = True
-                                camera_cmd = path
-                                logger.info(f"[CAMERA] {cmd} trouvé à {path}")
-                                break
-                            except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
-                                pass
-                        if camera_available:
+                    # Lire les données par petits blocs
+                    chunk = camera_process.stdout.read(1024)
+                    if not chunk:
+                        break
+                        
+                    buffer += chunk
+                    
+                    # Chercher les marqueurs JPEG
+                    while True:
+                        # Chercher le début d'une frame JPEG (0xFFD8)
+                        start = buffer.find(b'\xff\xd8')
+                        if start == -1:
                             break
-            
-            if not camera_available:
-                logger.warning("[CAMERA] rpicam-vid/libcamera-vid non trouvé dans le système")
-                logger.info("[CAMERA] Vérifiez l'installation avec: sudo apt install rpicam-apps")
-                logger.info("[CAMERA] Ou pour les anciennes versions: sudo apt install libcamera-apps")
-                logger.info("[CAMERA] Basculement vers caméra USB en fallback")
-                camera_type = 'usb'
-                camera_id = config.get('usb_camera_id', 0)
-                usb_camera = UsbCamera(camera_id=camera_id)
-                if not usb_camera.start():
-                    raise Exception(f"Impossible de démarrer la caméra USB avec ID {camera_id}")
-                
-                # Générateur de frames pour la caméra USB
-                while True:
-                    frame = usb_camera.get_frame()
-                    if frame:
+                            
+                        # Chercher la fin de la frame JPEG (0xFFD9)
+                        end = buffer.find(b'\xff\xd9', start + 2)
+                        if end == -1:
+                            break
+                            
+                        # Extraire la frame complète
+                        jpeg_frame = buffer[start:end + 2]
+                        buffer = buffer[end + 2:]
+                        
                         # Stocker la frame pour capture instantanée
                         with frame_lock:
-                            last_frame = frame
+                            last_frame = jpeg_frame
                         
                         # Envoyer la frame au navigateur
                         yield (b'--frame\r\n'
                                b'Content-Type: image/jpeg\r\n'
-                               b'Content-Length: ' + str(len(frame)).encode() + b'\r\n\r\n' +
-                               frame + b'\r\n')
-                    else:
-                        time.sleep(0.03)  # Attendre si pas de frame disponible
-            else:
-                # Commande rpicam-vid/libcamera-vid optimisée pour Pi 3 - résolution 16:9 pour écran 16:9
-                cmd = [
-                    camera_cmd,
-                    '--codec', 'mjpeg',
-                    '--width', '640',    # Résolution réduite pour Pi 3
-                    '--height', '360',   # 16:9 adapté à votre écran 16:9
-                    '--framerate', '20', # Framerate plus élevé avec résolution réduite
-                    '--timeout', '0',    # Durée infinie
-                    '--output', '-',     # Sortie vers stdout
-                    '--inline',          # Headers inline
-                    '--flush',           # Flush immédiat
-                    '--nopreview',       # Pas d'aperçu local
-                    '--quality', '70',   # Qualité JPEG réduite pour moins de données
-                    '--denoise', 'off',  # Désactiver le débruitage pour économiser du CPU
-                    '--awb', 'auto',     # Balance des blancs automatique simple
-                    '--metering', 'centre' # Mesure d'exposition centrée, plus rapide
-                ]
-                
-                camera_process = subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    bufsize=0
-                )
-                
-                # Buffer pour assembler les frames JPEG
-                buffer = b''
-                
-                while camera_process and camera_process.poll() is None:
-                    try:
-                        # Lire les données par petits blocs
-                        chunk = camera_process.stdout.read(1024)
-                        if not chunk:
-                            break
-                        
-                        buffer += chunk
-                        
-                        # Chercher les marqueurs JPEG
-                        while True:
-                            # Chercher le début d'une frame JPEG (0xFFD8)
-                            start = buffer.find(b'\xff\xd8')
-                            if start == -1:
-                                break
-                                
-                            # Chercher la fin de la frame JPEG (0xFFD9)
-                            end = buffer.find(b'\xff\xd9', start + 2)
-                            if end == -1:
-                                break
-                                
-                            # Extraire la frame complète
-                            jpeg_frame = buffer[start:end + 2]
-                            buffer = buffer[end + 2:]
-                            
-                            # Stocker la frame pour capture instantanée
-                            with frame_lock:
-                                last_frame = jpeg_frame
-                            
-                            # Envoyer la frame au navigateur
-                            yield (b'--frame\r\n'
-                                   b'Content-Type: image/jpeg\r\n'
-                                   b'Content-Length: ' + str(len(jpeg_frame)).encode() + b'\r\n\r\n' +
-                                   jpeg_frame + b'\r\n')
+                               b'Content-Length: ' + str(len(jpeg_frame)).encode() + b'\r\n\r\n' +
+                               jpeg_frame + b'\r\n')
                                
-                    except Exception as e:
-                        logger.info(f"[CAMERA] Erreur lecture flux: {e}")
-                        break
+                except Exception as e:
+                    logger.info(f"[CAMERA] Erreur lecture flux: {e}")
+                    break
                 
     except Exception as e:
         logger.info(f"Erreur flux vidéo: {e}")
