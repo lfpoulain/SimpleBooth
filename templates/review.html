@@ -59,6 +59,12 @@
         object-fit: contain;
         border-radius: 8px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        user-select: none; /* Empêche la sélection */
+        -webkit-user-drag: none; /* Empêche le glissé-déposé sur WebKit */
+        -khtml-user-drag: none;
+        -moz-user-drag: none;
+        -o-user-drag: none;
+        pointer-events: none; /* Empêche les interactions de pointeur */
     }
 
     .action-buttons {
@@ -67,29 +73,6 @@
         flex-direction: column;
         justify-content: center;
         align-items: center;
-    }
-
-    /* Correction pour la modale Bootstrap sur layout fixe */
-    .modal.fade {
-        position: fixed !important;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        display: flex !important;
-        justify-content: center;
-        align-items: center;
-        background-color: rgba(0,0,0,0.6);
-        opacity: 0;
-        transition: opacity 0.15s linear;
-    }
-    .modal.show {
-        opacity: 1;
-    }
-    .modal-dialog {
-        margin: auto !important;
-        max-width: 450px;
-        transform: none; /* Annule la transition de Bootstrap */
     }
     
     /* Boutons améliorés pour 800x480 */
@@ -176,7 +159,7 @@
     <div class="photo-container">
         <img src="{{ url_for('serve_photo', filename=photo) }}" 
              alt="Photo capturée" 
-             class="photo-preview-responsive" draggable="false">
+             class="photo-preview-responsive">
     </div>
     
     <!-- Conteneur pour les boutons d'action -->
