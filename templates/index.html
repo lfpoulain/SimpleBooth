@@ -6,38 +6,46 @@
 <div class="photobooth-container" data-printer-enabled="{{ config.printer_enabled|tojson }}">
     <style>
     .photobooth-container {
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
         width: 100vw;
+        height: 100vh;
         background-color: #1a1a1a;
         overflow: hidden;
-        position: fixed; 
-        top: 0; 
-        left: 0;
+        margin: 0;
+        padding: 0;
     }
     .photobooth-body {
-        flex-grow: 1;
-        position: relative;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 1rem;
-    }
-    .photobooth-footer {
-        flex-shrink: 0;
-        padding: 1rem;
-        text-align: center;
+        padding: 0;
     }
     #videoPreview {
-        max-width: 100%;
-        max-height: 100%;
-        width: auto;
-        height: auto;
-        object-fit: contain;
+        width: 100vw;
+        height: 100vh;
+        object-fit: cover;
         background-color: #000;
-        border-radius: 15px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .capture-button {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10;
+        background: rgba(220, 53, 69, 0.9);
+        border: 3px solid white;
+        border-radius: 50px;
+        padding: 15px 25px;
+        font-size: 1.2rem;
+        color: white;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
     }
     </style>
     <!-- Conteneur vidéo -->
@@ -56,12 +64,9 @@
             <div style="font-size: 8rem; font-weight: bold; color: black; text-shadow: none;">CHEESE!</div>
         </div>
         <!-- Bouton capture en overlay -->
-        <div class="position-absolute bottom-0 start-50 translate-middle-x mb-4" style="z-index: 5;">
-        <button id="captureBtn" class="btn btn-danger btn-lg px-5 py-3" onclick="capturePhoto()" 
-                style="font-size: 1.5rem; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+        <button id="captureBtn" class="capture-button" onclick="capturePhoto()">
             <i class="fas fa-camera fa-2x"></i>
         </button>
-        </div>
     </div>
     
     <!-- Alerte manque de papier -->
