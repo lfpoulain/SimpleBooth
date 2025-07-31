@@ -274,6 +274,12 @@
 
 {% block scripts %}
 <script>
+    // Redirection automatique vers l'accueil après 10 secondes
+    setTimeout(function() {
+        window.location.href = "{{ url_for('index') }}";
+    }, 10000); // 10000 millisecondes = 10 secondes
+
+
 async function printPhoto() {
     const printBtn = event.target;
     const originalContent = printBtn.innerHTML;
