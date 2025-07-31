@@ -14,7 +14,15 @@ import atexit
 import base64
 import sys
 from datetime import datetime
-from runware import Runware, IImageInference
+# Import optionnel pour les effets IA
+try:
+    from runware import Runware, IImageInference
+    RUNWARE_AVAILABLE = True
+except ImportError:
+    print("[INFO] Module runware non disponible - les effets IA seront désactivés")
+    Runware = None
+    IImageInference = None
+    RUNWARE_AVAILABLE = False
 from config_utils import (
     PHOTOS_FOLDER,
     EFFECT_FOLDER,
@@ -293,6 +301,9 @@ def apply_effect():
     
     if not config.get('effect_enabled', False):
         return jsonify({'success': False, 'error': 'Les effets sont désactivés'})
+    
+    if not RUNWARE_AVAILABLE:
+        return jsonify({'success': False, 'error': 'Module runware non installé - les effets IA ne sont pas disponibles'})
     
     if not config.get('runware_api_key'):
         return jsonify({'success': False, 'error': 'Clé API Runware manquante'})
