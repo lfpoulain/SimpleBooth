@@ -740,17 +740,29 @@ def generate_video_stream():
             logger.info("[CAMERA] Démarrage de la Pi Camera...")
             # Vérifier si libcamera-vid est disponible
             libcamera_available = False
-            for path in ['/usr/bin/libcamera-vid', '/usr/local/bin/libcamera-vid']:
-                try:
-                    subprocess.run([path, '--version'], capture_output=True, check=True, timeout=5)
-                    libcamera_available = True
-                    libcamera_path = path
-                    break
-                except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
-                    pass
+            libcamera_path = 'libcamera-vid'
+            
+            # D'abord essayer dans le PATH système
+            try:
+                subprocess.run(['libcamera-vid', '--version'], capture_output=True, check=True, timeout=5)
+                libcamera_available = True
+                logger.info("[CAMERA] libcamera-vid trouvé dans le PATH")
+            except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+                # Ensuite essayer des chemins spécifiques
+                for path in ['/usr/bin/libcamera-vid', '/usr/local/bin/libcamera-vid', '/opt/vc/bin/libcamera-vid']:
+                    try:
+                        subprocess.run([path, '--version'], capture_output=True, check=True, timeout=5)
+                        libcamera_available = True
+                        libcamera_path = path
+                        logger.info(f"[CAMERA] libcamera-vid trouvé à {path}")
+                        break
+                    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+                        pass
             
             if not libcamera_available:
-                logger.info("[INFO] libcamera-vid non disponible, basculement vers caméra USB")
+                logger.warning("[CAMERA] libcamera-vid non trouvé dans le système")
+                logger.info("[CAMERA] Vérifiez l'installation avec: sudo apt install libcamera-apps")
+                logger.info("[CAMERA] Basculement vers caméra USB en fallback")
                 camera_type = 'usb'
                 camera_id = config.get('usb_camera_id', 0)
                 usb_camera = UsbCamera(camera_id=camera_id)
