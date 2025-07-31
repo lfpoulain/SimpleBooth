@@ -35,64 +35,67 @@
         left: 0;
         width: 800px;
         height: 480px;
-        background: #000;
+        display: flex;
+        flex-direction: column;
+        padding: 10px;
+        margin: 0;
+        background: #1a1a1a;
         overflow: hidden;
     }
 
     .photo-container {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
+        width: 780px;
+        height: 350px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+        margin: 15px auto 10px auto;
     }
 
     .photo-preview-responsive {
-        width: 100%;
-        height: 100%;
-        object-fit: contain; /* ou 'cover' si vous préférez */
-        border-radius: 0;
+        max-width: 780px;
+        max-height: 350px;
+        object-fit: contain;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.5);
     }
 
     .action-buttons {
-        position: absolute;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 95%;
-        z-index: 10;
-        background: rgba(0, 0, 0, 0.4);
-        padding: 10px;
-        border-radius: 12px;
+        width: 780px;
+        height: 100px;
+        margin: 0 auto;
+        padding: 0;
     }
     
-    /* Boutons optimisés pour 800x480 */
+    /* Boutons améliorés pour 800x480 */
     .btn-review {
-        height: 40px;
-        font-size: 0.8rem;
+        height: 55px; /* Plus hauts */
+        font-size: 1.1rem; /* Texte plus grand */
         display: flex;
         flex-direction: row;
         align-items: center;
         justify-content: center;
-        line-height: 1;
-        padding: 0.3rem 0.5rem;
-        margin-bottom: 0.2rem;
-        border-radius: 6px;
+        line-height: 1.2;
+        padding: 0.5rem 0.8rem;
+        margin-bottom: 0.3rem;
+        border-radius: 8px;
         white-space: nowrap;
+        border: 2px solid rgba(255,255,255,0.3);
     }
     .btn-review i {
-        font-size: 1rem;
-        margin-right: 0.3rem;
+        font-size: 1.4rem; /* Icônes plus grandes */
+        margin-right: 0.6rem;
         margin-bottom: 0;
     }
     .btn-review span {
-        font-size: 0.75rem;
+        font-size: 1rem; /* Texte du span plus grand */
     }
     
-    /* Espacement minimal pour 800x480 */
+    /* Espacement plus grand entre les boutons */
     .row.g-2 {
-        --bs-gutter-x: 0.2rem;
-        --bs-gutter-y: 0.2rem;
+        --bs-gutter-x: 0.8rem; /* Plus d'espace horizontal */
+        --bs-gutter-y: 0.4rem;
     }
     
     /* Media queries pour écrans plus grands */
@@ -271,11 +274,6 @@
 
 {% block scripts %}
 <script>
-    // Délai de 10 secondes avant de retourner à l'accueil
-    setTimeout(function() {
-        window.location.href = "{{ url_for('index') }}";
-    }, 10000); // 10000 millisecondes = 10 secondes
-
 async function printPhoto() {
     const printBtn = event.target;
     const originalContent = printBtn.innerHTML;
